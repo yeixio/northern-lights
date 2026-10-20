@@ -1,0 +1,10 @@
+# The SQLite database and uploaded photos.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: northern-lights-data
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 10Gi

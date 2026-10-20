@@ -1,0 +1,80 @@
+image:
+  repository: ghcr.io/yeixio/northern-lights
+  # Defaults to the chart's appVersion.
+  tag: ""
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+# Settings passed to the app as environment variables. See the Configuration
+# table in the README. For example:
+#   env:
+#     APP_URL: https://family.example.com
+#     MAX_UPLOAD_MB: "100"
+env: {}
+
+# Settings that hold passwords (DATABASE_URL, SMTP_URL, S3_SECRET_ACCESS_KEY...).
+# They're stored in a Secret the chart creates.
+secretEnv: {}
+
+# Or use a Secret you created yourself; all of its keys become environment variables.
+existingSecret: ""
+
+# The SQLite database and uploads live on this volume. With SQLite or local
+# uploads only one copy of the app can run, so the chart always runs one pod and
+# replaces it with the Recreate strategy.
+persistence:
+  enabled: true
+  # Use a PersistentVolumeClaim you created yourself.
+  existingClaim: ""
+  storageClass: ""
+  accessModes: [ReadWriteOnce]
+  size: 10Gi
+  annotations: {}
+
+service:
+  type: ClusterIP
+  port: 80
+  annotations: {}
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # cert-manager.io/cluster-issuer: letsencrypt
+    # nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+  hosts:
+    - host: family.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+    # - secretName: northern-lights-tls
+    #   hosts: [family.example.com]
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    memory: 512Mi
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000 # the image's "node" user
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: [ALL]
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

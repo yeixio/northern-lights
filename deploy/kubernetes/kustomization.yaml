@@ -1,0 +1,31 @@
+# Plain Kubernetes manifests for Northern Lights.
+#
+#   kubectl create namespace northern-lights
+#   kubectl apply -n northern-lights -k deploy/kubernetes
+#
+# Edit config.env for settings. For passwords (DATABASE_URL, SMTP_URL, S3 keys),
+# create a Secret named northern-lights-secrets; the app picks it up if present:
+#
+#   kubectl create secret generic northern-lights-secrets -n northern-lights \
+#     --from-literal=SMTP_URL='smtps://user:password@smtp.example.com:465'
+#
+# To expose it on a domain, edit ingress.yaml and uncomment it below. The Helm
+# chart in charts/northern-lights does the same with more options.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+labels:
+  - pairs:
+      app.kubernetes.io/name: northern-lights
+    includeSelectors: true
+resources:
+  - pvc.yaml
+  - deployment.yaml
+  - service.yaml
+  # - ingress.yaml
+configMapGenerator:
+  - name: northern-lights-config
+    envs:
+      - config.env
+images:
+  - name: ghcr.io/yeixio/northern-lights
+    newTag: latest

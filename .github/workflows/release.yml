@@ -1,0 +1,270 @@
+# Builds and checks every installer, and publishes them for v* tags.
+#
+#  - Pull requests: build the .deb and .rpm packages (amd64 and arm64) and install
+#    them on Debian, Ubuntu, Rocky Linux and Fedora; install the Helm chart and the
+#    plain Kubernetes manifests on a kind cluster; install the Homebrew formula on
+#    macOS.
+#  - v1.2.3 tags: also
+#      * create the GitHub release with the packages and the Helm chart attached
+#      * push the Helm chart to oci://ghcr.io/<owner>/charts/northern-lights
+#      * point Formula/northern-lights.rb at the new release (commit to main)
+#      * publish signed apt and dnf repositories to the gh-pages branch, when the
+#        PACKAGE_SIGNING_KEY secret is set
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  NFPM_VERSION: 2.48.0
+
+jobs:
+  linux-packages:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+            nfpm: Linux_x86_64
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            nfpm: Linux_arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install nfpm
+        run: |
+          curl -fsSL "https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}/nfpm_${NFPM_VERSION}_${{ matrix.nfpm }}.tar.gz" \
+            | sudo tar -xz -C /usr/local/bin nfpm
+
+      - name: Build
+        env:
+          SIGNING_KEY: ${{ secrets.PACKAGE_SIGNING_KEY }}
+          NFPM_PASSPHRASE: ${{ secrets.PACKAGE_SIGNING_PASSPHRASE }}
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            version="${GITHUB_REF_NAME#v}"
+            if [ -n "$SIGNING_KEY" ]; then
+              printf '%s\n' "$SIGNING_KEY" > "$RUNNER_TEMP/signing-key.asc"
+              export SIGNING_KEY_FILE="$RUNNER_TEMP/signing-key.asc"
+            fi
+          else
+            version="$(node -p 'require("./package.json").version')"
+          fi
+          packaging/linux/build.sh "$version"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages-${{ matrix.arch }}
+          path: dist-packages/*
+          if-no-files-found: error
+
+  test-packages:
+    needs: linux-packages
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: amd64, runner: ubuntu-latest, image: "debian:12" }
+          - { arch: amd64, runner: ubuntu-latest, image: "ubuntu:24.04" }
+          - { arch: amd64, runner: ubuntu-latest, image: "rockylinux:9" }
+          - { arch: amd64, runner: ubuntu-latest, image: "fedora:latest" }
+          - { arch: arm64, runner: ubuntu-24.04-arm, image: "debian:12" }
+          - { arch: arm64, runner: ubuntu-24.04-arm, image: "rockylinux:9" }
+    name: test-packages (${{ matrix.image }}, ${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: packages-${{ matrix.arch }}
+          path: dist-packages
+      - name: Install and start
+        run: docker run --rm -v "$PWD:/src" -w /src "${{ matrix.image }}" sh packaging/linux/test-install.sh dist-packages
+
+  kubernetes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - run: helm lint charts/northern-lights
+
+      - uses: docker/setup-buildx-action@v3
+      - name: Build the image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: northern-lights:test
+          cache-from: type=gha,scope=amd64
+
+      - uses: helm/kind-action@v1
+        with:
+          cluster_name: kind
+      - run: kind load docker-image northern-lights:test --name kind
+
+      - name: Install the Helm chart
+        run: |
+          helm install nl charts/northern-lights --wait --timeout 3m \
+            --set image.repository=northern-lights --set image.tag=test --set image.pullPolicy=Never \
+            --set env.APP_URL=http://localhost:3000
+          kubectl port-forward svc/nl-northern-lights 3000:80 &
+          sleep 3
+          curl -fsS http://localhost:3000/api/auth/session
+          curl -fsS http://localhost:3000/ | grep -q '<div id="root">'
+
+      - name: Install the plain manifests
+        run: |
+          kubectl create namespace plain
+          kubectl kustomize deploy/kubernetes \
+            | sed 's|ghcr.io/yeixio/northern-lights:latest|northern-lights:test|' \
+            | kubectl apply -n plain -f -
+          kubectl rollout status -n plain deploy/northern-lights --timeout=3m
+
+      - name: Show what went wrong
+        if: failure()
+        run: |
+          kubectl get all,pvc -A
+          kubectl describe pods -A -l app.kubernetes.io/name=northern-lights
+          for ns in default plain; do
+            kubectl logs -n "$ns" -l app.kubernetes.io/name=northern-lights --tail=100 || true
+          done
+
+  homebrew:
+    runs-on: macos-latest
+    env:
+      HOMEBREW_NO_AUTO_UPDATE: "1"
+      HOMEBREW_NO_INSTALL_CLEANUP: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the formula from this commit
+        run: |
+          version="$(node -p 'require("./package.json").version')"
+          tarball="$RUNNER_TEMP/northern-lights-$version.tar.gz"
+          git archive --format=tar.gz --prefix="northern-lights-$version/" -o "$tarball" HEAD
+          sha="$(shasum -a 256 "$tarball" | cut -d' ' -f1)"
+          brew tap-new --no-git local/test
+          sed -e "s|^  url .*|  url \"file://$tarball\"|" -e "s|^  sha256 .*|  sha256 \"$sha\"|" \
+            Formula/northern-lights.rb > "$(brew --repository local/test)/Formula/northern-lights.rb"
+          brew install --build-from-source local/test/northern-lights
+          brew test local/test/northern-lights
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [test-packages, kubernetes, homebrew]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: packages-*
+          path: dist-packages
+          merge-multiple: true
+
+      - name: Package the Helm chart
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          helm package charts/northern-lights --version "$version" --app-version "$version" -d dist-packages
+
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" dist-packages/* --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" dist-packages/* --verify-tag --generate-notes
+          fi
+
+      - name: Push the Helm chart to GHCR
+        run: |
+          echo "${{ github.token }}" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
+          owner="$(echo "$GITHUB_REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')"
+          helm push dist-packages/northern-lights-*.tgz "oci://ghcr.io/$owner/charts"
+
+  homebrew-formula:
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+      - name: Point the formula at this release
+        run: |
+          url="https://github.com/$GITHUB_REPOSITORY/archive/refs/tags/$GITHUB_REF_NAME.tar.gz"
+          sha="$(curl -fsSL "$url" | sha256sum | cut -d' ' -f1)"
+          sed -i -e "s|^  url .*|  url \"$url\"|" -e "s|^  sha256 .*|  sha256 \"$sha\"|" Formula/northern-lights.rb
+          git diff --quiet && exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Homebrew: update formula to $GITHUB_REF_NAME [skip ci]"
+          git push
+
+  package-repos:
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      SIGNING_KEY: ${{ secrets.PACKAGE_SIGNING_KEY }}
+      GPG_PASSPHRASE: ${{ secrets.PACKAGE_SIGNING_PASSPHRASE }}
+      # Where the gh-pages branch is served. Set the PACKAGES_URL repository
+      # variable if GitHub Pages uses a custom domain.
+      PACKAGES_URL: ${{ vars.PACKAGES_URL || format('https://{0}.github.io/{1}', github.repository_owner, github.event.repository.name) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for the signing key
+        id: key
+        run: |
+          if [ -z "$SIGNING_KEY" ]; then
+            echo "::warning::PACKAGE_SIGNING_KEY is not set, so the apt and dnf repositories were not published. The packages are still attached to the release."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download the packages of the last three releases
+        if: steps.key.outputs.enabled == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p packages
+          for tag in $(gh release list --limit 3 --exclude-drafts --json tagName -q '.[].tagName'); do
+            gh release download "$tag" -p '*.deb' -p '*.rpm' -D packages --skip-existing
+          done
+          ls -l packages
+
+      - name: Build the repositories
+        if: steps.key.outputs.enabled == 'true'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq apt-utils createrepo-c
+          printf '%s\n' "$SIGNING_KEY" | gpg --batch --import
+          export GPG_KEY_ID="$(gpg --list-secret-keys --with-colons | awk -F: '/^sec/ { print $5; exit }')"
+          packaging/repos/build-repos.sh packages site "$PACKAGES_URL"
+
+      - name: Publish to the gh-pages branch
+        if: steps.key.outputs.enabled == 'true'
+        working-directory: site
+        run: |
+          git init -q -b gh-pages
+          git add -A
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -qm "Packages for $GITHUB_REF_NAME"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/$GITHUB_REPOSITORY.git" gh-pages
+          echo "Published to $PACKAGES_URL" >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,59 @@
+# Builds the .deb and .rpm packages. Run through packaging/linux/build.sh, which
+# fills in $VERSION, $ARCH (amd64 or arm64), $STAGE (the built app) and
+# $SIGNING_KEY_FILE.
+name: northern-lights
+arch: ${ARCH}
+platform: linux
+version: ${VERSION}
+release: 1
+section: web
+priority: optional
+maintainer: Northern Lights <northern-lights@users.noreply.github.com>
+description: |
+  Self-hosted personal social site.
+  A public page for you, your family, or your group, plus a private,
+  invite-only social network. Runs on SQLite or Postgres.
+vendor: yeixio
+homepage: https://github.com/yeixio/northern-lights
+license: MIT
+
+contents:
+  # The app, with its own Node.js runtime so it doesn't depend on the distro's.
+  - src: ${STAGE}/
+    dst: /usr/lib/northern-lights
+    type: tree
+  - src: packaging/linux/northern-lights
+    dst: /usr/bin/northern-lights
+    file_info:
+      mode: 0755
+  - src: packaging/linux/northern-lights.service
+    dst: /usr/lib/systemd/system/northern-lights.service
+  - src: packaging/linux/northern-lights.env
+    dst: /etc/northern-lights/northern-lights.env
+    type: config|noreplace
+    file_info:
+      mode: 0640
+  - src: LICENSE
+    dst: /usr/share/doc/northern-lights/LICENSE
+
+scripts:
+  postinstall: packaging/linux/postinstall.sh
+  preremove: packaging/linux/preremove.sh
+  postremove: packaging/linux/postremove.sh
+
+overrides:
+  deb:
+    depends:
+      - libc6 (>= 2.34)
+      - passwd
+  rpm:
+    depends:
+      - glibc >= 2.34
+      - shadow-utils
+
+rpm:
+  group: Applications/Internet
+  compression: zstd
+  # apt checks the repository's signature instead, so only RPMs are signed.
+  signature:
+    key_file: ${SIGNING_KEY_FILE}

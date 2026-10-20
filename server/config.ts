@@ -1,8 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
 
-// Read settings from .env when present (real environment variables win).
-if (fs.existsSync(".env")) process.loadEnvFile(".env");
+// Read settings from .env, or the file named by ENV_FILE, when present (real
+// environment variables win). The Linux packages and Homebrew point ENV_FILE at
+// their config file.
+const envFile = process.env.ENV_FILE ?? ".env";
+if (fs.existsSync(envFile)) process.loadEnvFile(envFile);
 
 const env = process.env;
 

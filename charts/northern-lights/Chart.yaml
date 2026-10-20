@@ -1,0 +1,11 @@
+apiVersion: v2
+name: northern-lights
+description: Self-hosted personal social site with a public page and a private, invite-only network
+type: application
+# The release workflow sets version and appVersion from the v* tag.
+version: 0.1.0
+appVersion: "0.1.0"
+home: https://github.com/yeixio/northern-lights
+sources:
+  - https://github.com/yeixio/northern-lights
+keywords: [social, self-hosted, photos, family]

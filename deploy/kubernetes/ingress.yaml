@@ -1,0 +1,27 @@
+# Exposes the site on your domain. Set the host (and APP_URL in config.env to
+# match), adjust ingressClassName and the TLS settings for your cluster, then
+# uncomment ingress.yaml in kustomization.yaml.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: northern-lights
+  annotations:
+    # cert-manager.io/cluster-issuer: letsencrypt
+    # Allow large photo and video uploads (ingress-nginx).
+    nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+spec:
+  # ingressClassName: nginx
+  rules:
+    - host: family.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: northern-lights
+                port:
+                  name: http
+  tls:
+    - hosts: [family.example.com]
+      secretName: northern-lights-tls

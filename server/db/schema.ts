@@ -119,6 +119,14 @@ export interface FilesTable {
   created_at: string;
 }
 
+export interface ImportsTable {
+  user_id: string;
+  source_key: string; // e.g. "fb:file:123_456_n.jpg:20481"
+  kind: "file" | "album" | "post";
+  ref: string; // file key, album id or post id
+  created_at: string;
+}
+
 export interface Database {
   users: UsersTable;
   sessions: SessionsTable;
@@ -132,6 +140,7 @@ export interface Database {
   albums: AlbumsTable;
   media: MediaTable;
   files: FilesTable;
+  imports: ImportsTable;
 }
 
 export type User = Selectable<UsersTable>;

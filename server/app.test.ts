@@ -12,6 +12,11 @@ process.env.UPLOADS_DIR = path.join(tmp, "uploads");
 const { openDatabase } = await import("./db/index.js");
 const { createStorage } = await import("./storage.js");
 const { createApp } = await import("./app.js");
+// The Facebook importer runs in the browser; these tests drive it against the API.
+const { buildPlan } = await import("../src/lib/facebook.js");
+const { runImport } = await import("../src/lib/importer.js");
+const { readZip } = await import("../src/lib/zip.js");
+const { facebookExport } = await import("../src/lib/fixtures/facebookExport.js");
 
 const db = await openDatabase(process.env.TEST_DATABASE_URL ?? "sqlite::memory:");
 const app = createApp(db, createStorage());
@@ -34,6 +39,7 @@ function client() {
     return { status: res.status, data: data as any };
   }
   return {
+    cookie: () => cookie,
     get: (u: string) => call("GET", u),
     post: (u: string, b?: unknown, h?: Record<string, string>) => call("POST", u, b, h),
     patch: (u: string, b?: unknown) => call("PATCH", u, b),
@@ -50,7 +56,7 @@ let friendId = "";
 
 before(async () => {
   // Start from an empty database when reusing a Postgres test db.
-  for (const t of ["media", "albums", "messages", "reactions", "comments", "posts", "files",
+  for (const t of ["imports", "media", "albums", "messages", "reactions", "comments", "posts", "files",
     "password_resets", "invitations", "sessions", "users"] as const) {
     await db.deleteFrom(t).execute();
   }
@@ -219,5 +225,72 @@ describe("admin", () => {
     assert.equal((await c.get("/api/posts")).status, 200);
     assert.equal((await client().post("/api/auth/password/reset", { token, password: "again12345" })).status, 400);
     assert.equal((await client().post("/api/auth/login", { email: "friend@example.com", password: "newpassword" })).status, 200);
+  });
+});
+
+describe("Facebook import", () => {
+  const realFetch = globalThis.fetch;
+
+  /** Run the browser-side importer against this server, signed in as `who`. */
+  async function importAs(who: ReturnType<typeof client>) {
+    globalThis.fetch = ((url: string, init: RequestInit = {}) =>
+      app.request(url, { ...init, headers: { ...(init.headers as Record<string, string>), cookie: who.cookie() } })) as typeof fetch;
+    try {
+      const plan = await buildPlan((await Promise.all(facebookExport().map(readZip))).flat());
+      return await runImport(plan, { posts: true, signal: new AbortController().signal, onProgress: () => undefined });
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  }
+  const fileCount = async () => (await db.selectFrom("files").select((eb) => eb.fn.countAll<number>().as("n")).executeTakeFirstOrThrow()).n;
+
+  test("imports photos into members-only albums, with captions and dates", async () => {
+    const result = await importAs(admin);
+    assert.equal(result.total, 5);
+    assert.equal(result.done, 5);
+    assert.deepEqual(result.skipped, []);
+    assert.equal(result.albums, 4);
+    assert.equal(result.posts, 2);
+
+    const albums = (await admin.get("/api/albums")).data.filter((a: any) => /Facebook|Café/.test(a.title));
+    assert.equal(albums.length, 4);
+    assert.ok(albums.every((a: any) => a.is_public === false));
+    const summer = (await admin.get(`/api/albums/${albums.find((a: any) => a.title === "Café summer").id}`)).data;
+    assert.equal(summer.description, "Lake days");
+    assert.deepEqual(summer.media.map((m: any) => m.caption), ["Sunset 🌅", "Second"]);
+    assert.equal(summer.media[0].created_at, new Date(1719000000_000).toISOString());
+    assert.equal(summer.cover_url, summer.media[0].url);
+    assert.equal((await admin.get(summer.media[0].url)).status, 200);
+    assert.equal((await anon.get(summer.media[0].url)).status, 404);
+
+    const post = (await admin.get("/api/posts")).data.find((p: any) => p.content === "At the lake");
+    assert.equal(post.is_public, false);
+    assert.equal(post.created_at, new Date(1719500000_000).toISOString());
+    assert.equal(post.media_urls[0], summer.media[0].url); // the same file, not a copy
+  });
+
+  test("running it again adds nothing", async () => {
+    const files = await fileCount();
+    const result = await importAs(admin);
+    assert.equal(result.posts, 0);
+    assert.equal(await fileCount(), files);
+    const titles = (await admin.get("/api/albums")).data.map((a: any) => a.title);
+    assert.equal(titles.filter((t: string) => t === "Café summer").length, 1);
+  });
+
+  test("deleting an album keeps photos a post still uses", async () => {
+    const albums = (await admin.get("/api/albums")).data;
+    const fromPosts = (await admin.get(`/api/albums/${albums.find((a: any) => a.title === "Photos from Facebook posts").id}`)).data;
+    assert.equal((await admin.del(`/api/albums/${fromPosts.id}`)).status, 200);
+    assert.equal((await admin.get(fromPosts.media[0].url)).status, 200);
+  });
+
+  test("members can only import their own uploads", async () => {
+    const mine = (await admin.get("/api/posts")).data.find((p: any) => p.content === "At the lake").media_urls[0];
+    const other = client();
+    await other.post("/api/auth/login", { email: "friend@example.com", password: "newpassword" });
+    const r = await other.post("/api/imports/albums", { key: "fb:album:x", title: "Mine now", items: [{ url: mine, type: "image" }] });
+    assert.equal(r.status, 400);
+    assert.deepEqual((await other.post("/api/imports/lookup", { keys: ["fb:file:1_n.jpg:5"] })).data.found, {});
   });
 });

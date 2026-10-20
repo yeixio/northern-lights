@@ -121,6 +121,11 @@ export const albumRoutes = (storage: Storage) => new Hono<AppEnv>()
 async function removeFile(db: DB, storage: Storage, url: string) {
   const key = fileKey(url);
   if (!key) return;
+  // An imported photo can be in an album and a post at once; keep it while anything still uses it.
+  const inUse = await db.selectFrom("media").select("id").where("url", "=", url)
+    .union(db.selectFrom("posts").select("id").where("media_urls", "like", `%"${url}"%`))
+    .limit(1).executeTakeFirst();
+  if (inUse) return;
   await db.deleteFrom("files").where("key", "=", key).execute();
   await storage.remove(key).catch(() => undefined);
 }

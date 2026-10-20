@@ -1,0 +1,30 @@
+{
+  "name": "northern-lights",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "A self-hosted personal social site: a public page for you, your family, or your group, plus a private, invite-only social network.",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.118.0",
+    "lucide-react": "^1.60.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-router-dom": "^7.18.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "tailwindcss": "^4.3.3",
+    "typescript": "~5.9",
+    "vite": "^8.3.4"
+  }
+}

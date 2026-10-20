@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+@theme {
+  --color-aurora-green: #34d399;
+  --color-aurora-cyan: #22d3ee;
+  --color-aurora-violet: #a78bfa;
+  --color-night: #0b1220;
+}
+
+body {
+  @apply bg-slate-50 text-slate-900 antialiased;
+}
+
+.aurora-bg {
+  background:
+    radial-gradient(60% 80% at 20% 0%, rgb(52 211 153 / 0.35), transparent 60%),
+    radial-gradient(50% 70% at 80% 10%, rgb(167 139 250 / 0.35), transparent 60%),
+    radial-gradient(40% 60% at 50% 30%, rgb(34 211 238 / 0.25), transparent 60%),
+    var(--color-night);
+}
+
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50;
+}
+@utility btn-primary {
+  @apply btn bg-emerald-600 text-white hover:bg-emerald-700;
+}
+@utility btn-secondary {
+  @apply btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-50;
+}
+@utility btn-danger {
+  @apply btn bg-rose-600 text-white hover:bg-rose-700;
+}
+@utility input {
+  @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:outline-none;
+}
+@utility card {
+  @apply rounded-xl border border-slate-200 bg-white shadow-sm;
+}

@@ -9,7 +9,7 @@ backup is included in this repository.
 
 The original migration names (`foggy_wood`, `bitter_cake`, `delicate_shape`, …)
 are the style Bolt generates, which points to a React + Vite + Supabase app.
-The rebuild uses the same stack.
+The rebuild keeps React + Vite for the front end.
 
 ## Original tables (`public` schema)
 
@@ -44,13 +44,23 @@ let owners update or delete their own files.
 
 ## What the rebuild changes
 
-- `users` and `profiles` are merged into a single `profiles` table keyed by the auth user id.
-- Membership is enforced in the database: `is_member()` (signed in and approved)
-  and `is_admin()` gate every policy, and a trigger stops non-admins from changing
-  `is_admin` / `is_approved`.
-- Invite-only sign-in uses Supabase's own invite emails (`invite-user` edge
-  function) and a new `invitations` table instead of hand-rolled verification codes.
-  Public sign-ups are turned off.
+The rebuild no longer depends on Supabase. It is a self-hosted Node.js server
+(Hono + Kysely) that runs on SQLite or Postgres, so the access rules that lived
+in Postgres row-level security are now enforced by the API.
+
+- `users` and `profiles` are merged into a single `users` table with a password
+  hash, `is_admin`, and `is_active` (suspended members can't sign in).
+- Supabase Auth is replaced by password logins with server-side sessions in an
+  httpOnly cookie, a first-run setup page that creates the admin, one-time invite
+  links (`invitations`), and one-time password reset links (`password_resets`).
+  `verification_codes` is gone.
+- Email is optional. Invite and reset links are always shown to whoever made them.
+- Storage moves from the Supabase `media` bucket to local disk or S3. Files are
+  served through the app, so a photo is only visible to the public when it's used
+  on the public page.
+- Like and comment counts are computed in queries instead of kept by triggers.
 - New `site_settings` table holds the public page's name, tagline, about text and header image.
-- Posts and albums gained an `is_public` flag so selected content can appear on the public page.
-- Albums gained an `owner_id` so members can manage their own albums.
+- Posts and albums gained an `is_public` flag; albums gained an `owner_id`.
+- Supabase Realtime is replaced by server-sent events.
+- Column types are kept portable: text UUIDs, ISO-8601 text timestamps, 0/1
+  integer booleans, and JSON text for lists.

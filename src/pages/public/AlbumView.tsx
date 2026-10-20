@@ -1,21 +1,18 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, X } from "lucide-react";
-import { supabase } from "../../lib/supabase";
-import type { Album, Media } from "../../lib/types";
+import { api } from "../../lib/api";
+import type { AlbumWithMedia, Media } from "../../lib/types";
 import Spinner from "../../components/Spinner";
 
-/** Read-only album page. Used on the public site and as the viewer inside the network. */
-export default function AlbumView({ back = "/gallery" }: { back?: string }) {
+/** Read-only public album page. */
+export default function AlbumView() {
   const { id } = useParams();
-  const [album, setAlbum] = useState<Album | null | undefined>(undefined);
-  const [items, setItems] = useState<Media[]>([]);
+  const [album, setAlbum] = useState<AlbumWithMedia | null | undefined>(undefined);
   const [open, setOpen] = useState<Media | null>(null);
 
   useEffect(() => {
-    supabase.from("albums").select("*").eq("id", id!).maybeSingle().then(({ data }) => setAlbum(data as Album | null));
-    supabase.from("media").select("*").eq("album_id", id!).order("created_at")
-      .then(({ data }) => setItems((data as Media[]) ?? []));
+    api.get<AlbumWithMedia>(`/api/public/albums/${id}`).then(setAlbum).catch(() => setAlbum(null));
   }, [id]);
 
   if (album === undefined) return <Spinner full />;
@@ -23,13 +20,13 @@ export default function AlbumView({ back = "/gallery" }: { back?: string }) {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
-      <Link to={back} className="mb-4 inline-flex items-center gap-1 text-sm text-slate-600 hover:underline">
+      <Link to="/gallery" className="mb-4 inline-flex items-center gap-1 text-sm text-slate-600 hover:underline">
         <ArrowLeft size={16} /> Back
       </Link>
       <h1 className="text-3xl font-semibold">{album.title}</h1>
       {album.description && <p className="mt-2 text-slate-600">{album.description}</p>}
       <div className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-        {items.map((m) => (
+        {album.media.map((m) => (
           <button key={m.id} onClick={() => setOpen(m)} className="aspect-square overflow-hidden rounded-lg bg-slate-200">
             {m.type === "video"
               ? <video src={m.url} className="h-full w-full object-cover" muted />

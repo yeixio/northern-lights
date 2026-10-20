@@ -1,0 +1,34 @@
+# SQLite (default): the database and uploads live in the "northern-data" volume.
+#   docker compose up -d
+#
+# Postgres: uncomment the `db` service and the DATABASE_URL line, then
+#   docker compose up -d
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - northern-data:/data
+    environment:
+      PORT: "3000"
+      # APP_URL: https://family.example.com
+      # SMTP_URL: smtps://user:password@smtp.example.com:465
+      # MAIL_FROM: Northern Lights <no-reply@example.com>
+      # DATABASE_URL: postgres://northern:northern@db:5432/northern_lights
+    # depends_on: [db]
+
+  # db:
+  #   image: postgres:16
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_USER: northern
+  #     POSTGRES_PASSWORD: northern
+  #     POSTGRES_DB: northern_lights
+  #   volumes:
+  #     - postgres-data:/var/lib/postgresql/data
+
+volumes:
+  northern-data:
+  # postgres-data:

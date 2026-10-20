@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../../lib/supabase";
+import { Copy, Trash2 } from "lucide-react";
+import { api, errorText } from "../../lib/api";
 import type { Invitation } from "../../lib/types";
 import { timeAgo } from "../../lib/format";
 
@@ -7,56 +8,84 @@ export default function Invite() {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [created, setCreated] = useState<{ email: string; link: string; emailed: boolean } | null>(null);
+  const [copied, setCopied] = useState(false);
   const [sent, setSent] = useState<Invitation[]>([]);
 
-  const load = () =>
-    supabase.from("invitations").select("*").order("created_at", { ascending: false })
-      .then(({ data }) => setSent((data as Invitation[]) ?? []));
+  const load = () => api.get<Invitation[]>("/api/invitations").then(setSent);
   useEffect(() => void load(), []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
-    setResult(null);
-    const { data, error } = await supabase.functions.invoke("invite-user", {
-      body: { email, message, redirectTo: `${window.location.origin}/welcome` },
-    });
-    let text = data?.error as string | undefined;
-    if (error && !text) {
-      // Edge function errors carry the JSON body on the response.
-      const ctx = (error as { context?: Response }).context;
-      text = (await ctx?.json?.().catch(() => null))?.error ?? error.message;
-    }
-    setResult(text ? { ok: false, text } : { ok: true, text: `Invite sent to ${email}.` });
-    if (!text) {
+    setError(null);
+    setCreated(null);
+    try {
+      const res = await api.post<{ link: string; emailed: boolean }>("/api/invitations", { email, message });
+      setCreated({ email, ...res });
       setEmail("");
       setMessage("");
       await load();
+    } catch (err) {
+      setError(errorText(err));
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   }
+
+  async function copy(link: string) {
+    await navigator.clipboard.writeText(link);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  const pending = (i: Invitation) => !i.accepted_at && i.expires_at > new Date().toISOString();
 
   return (
     <div className="mx-auto max-w-xl space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Invite someone</h1>
-        <p className="text-slate-600">They'll get an email with a link to join. Only invited people can sign in.</p>
+        <p className="text-slate-600">Only invited people can join. Each invite link works once.</p>
       </div>
       <form onSubmit={submit} className="card space-y-3 p-4">
         <input className="input" type="email" required placeholder="friend@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
         <textarea className="input" placeholder="Personal note (optional)" value={message} onChange={(e) => setMessage(e.target.value)} />
-        {result && <p className={`text-sm ${result.ok ? "text-emerald-700" : "text-rose-600"}`}>{result.text}</p>}
-        <button className="btn-primary" disabled={busy}>{busy ? "Sending…" : "Send invite"}</button>
+        {error && <p className="text-sm text-rose-600">{error}</p>}
+        <button className="btn-primary" disabled={busy}>{busy ? "Creating…" : "Create invite"}</button>
       </form>
+
+      {created && (
+        <div className="card space-y-2 border-emerald-300 bg-emerald-50 p-4 text-sm">
+          <p>
+            {created.emailed
+              ? `We emailed an invite to ${created.email}. You can also send them this link yourself:`
+              : `Send this link to ${created.email} by text, email, or however you like:`}
+          </p>
+          <div className="flex gap-2">
+            <input className="input font-mono text-xs" readOnly value={created.link} onFocus={(e) => e.target.select()} />
+            <button type="button" className="btn-secondary" onClick={() => copy(created.link)}>
+              <Copy size={16} /> {copied ? "Copied" : "Copy"}
+            </button>
+          </div>
+        </div>
+      )}
+
       {sent.length > 0 && (
         <section className="card divide-y divide-slate-100">
-          <h2 className="p-4 font-semibold">Invitations you've sent</h2>
+          <h2 className="p-4 font-semibold">Invitations</h2>
           {sent.map((i) => (
-            <div key={i.id} className="flex justify-between px-4 py-2 text-sm">
-              <span>{i.email}</span>
-              <span className={i.accepted_at ? "text-emerald-700" : "text-slate-400"}>
-                {i.accepted_at ? "Joined" : `Sent ${timeAgo(i.created_at)}`}
+            <div key={i.id} className="flex items-center justify-between gap-2 px-4 py-2 text-sm">
+              <span className="truncate">{i.email}</span>
+              <span className="flex shrink-0 items-center gap-2">
+                <span className={i.accepted_at ? "text-emerald-700" : "text-slate-400"}>
+                  {i.accepted_at ? "Joined" : pending(i) ? `Sent ${timeAgo(i.created_at)}` : "Expired"}
+                </span>
+                {!i.accepted_at && (
+                  <button onClick={() => api.del(`/api/invitations/${i.id}`).then(load)} className="text-slate-400 hover:text-rose-600" aria-label="Cancel invite">
+                    <Trash2 size={14} />
+                  </button>
+                )}
               </span>
             </div>
           ))}

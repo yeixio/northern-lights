@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { Globe, Lock, X } from "lucide-react";
-import { supabase } from "../lib/supabase";
-import { uploadMedia } from "../lib/storage";
+import { api, errorText } from "../lib/api";
+import { uploadFiles } from "../lib/storage";
 import { useAuth } from "../auth/AuthProvider";
 import Avatar from "./Avatar";
 import ImagePicker from "./ImagePicker";
 
 export default function PostComposer({ onPosted }: { onPosted: () => void }) {
-  const { profile } = useAuth();
+  const { user } = useAuth();
   const [content, setContent] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [isPublic, setIsPublic] = useState(false);
@@ -16,24 +16,18 @@ export default function PostComposer({ onPosted }: { onPosted: () => void }) {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!profile || (!content.trim() && files.length === 0)) return;
+    if (!content.trim() && files.length === 0) return;
     setBusy(true);
     setError(null);
     try {
-      const media_urls = await Promise.all(files.map((f) => uploadMedia(`posts/${profile.id}`, f)));
-      const { error } = await supabase.from("posts").insert({
-        user_id: profile.id,
-        content: content.trim(),
-        media_urls,
-        is_public: isPublic,
-      });
-      if (error) throw error;
+      const uploaded = await uploadFiles(files);
+      await api.post("/api/posts", { content, media_urls: uploaded.map((u) => u.url), is_public: isPublic });
       setContent("");
       setFiles([]);
       setIsPublic(false);
       onPosted();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not post");
+      setError(errorText(err));
     } finally {
       setBusy(false);
     }
@@ -42,10 +36,10 @@ export default function PostComposer({ onPosted }: { onPosted: () => void }) {
   return (
     <form onSubmit={submit} className="card space-y-3 p-4">
       <div className="flex gap-3">
-        <Avatar profile={profile} />
+        <Avatar profile={user} />
         <textarea
           className="input min-h-20 resize-y"
-          placeholder={`What's on your mind, ${profile?.first_name || "friend"}?`}
+          placeholder={`What's on your mind, ${user?.first_name || "friend"}?`}
           value={content}
           onChange={(e) => setContent(e.target.value)}
         />
@@ -54,7 +48,9 @@ export default function PostComposer({ onPosted }: { onPosted: () => void }) {
         <div className="flex flex-wrap gap-2">
           {files.map((f, i) => (
             <div key={i} className="relative">
-              <img src={URL.createObjectURL(f)} alt="" className="h-20 w-20 rounded-lg object-cover" />
+              {f.type.startsWith("video/")
+                ? <video src={URL.createObjectURL(f)} className="h-20 w-20 rounded-lg object-cover" />
+                : <img src={URL.createObjectURL(f)} alt="" className="h-20 w-20 rounded-lg object-cover" />}
               <button
                 type="button"
                 className="absolute -top-2 -right-2 rounded-full bg-slate-800 p-0.5 text-white"

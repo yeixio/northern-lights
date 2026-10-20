@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
+import { api } from "../../lib/api";
 import { displayName, type Profile } from "../../lib/types";
 import Avatar from "../../components/Avatar";
 
@@ -8,8 +8,7 @@ export default function People() {
   const [people, setPeople] = useState<Profile[]>([]);
   const [q, setQ] = useState("");
   useEffect(() => {
-    supabase.from("profiles").select("*").eq("is_approved", true).order("first_name")
-      .then(({ data }) => setPeople((data as Profile[]) ?? []));
+    api.get<Profile[]>("/api/people").then(setPeople);
   }, []);
   const shown = people.filter((p) => displayName(p).toLowerCase().includes(q.toLowerCase()));
   return (

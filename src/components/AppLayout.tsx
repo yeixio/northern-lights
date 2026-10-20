@@ -9,7 +9,7 @@ const link = ({ isActive }: { isActive: boolean }) =>
   }`;
 
 export default function AppLayout() {
-  const { profile, signOut } = useAuth();
+  const { user: profile, signOut } = useAuth();
   const nav = [
     { to: "/app", label: "Feed", icon: Home, end: true },
     { to: "/app/people", label: "People", icon: Users },

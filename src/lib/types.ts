@@ -1,13 +1,16 @@
-export interface Profile {
+export interface Author {
   id: string;
   email: string;
   first_name: string;
   last_name: string;
   display_name: string | null;
-  bio: string | null;
   avatar_url: string | null;
+}
+
+export interface Profile extends Author {
+  bio: string | null;
   is_admin: boolean;
-  is_approved: boolean;
+  is_active: boolean;
   created_at: string;
 }
 
@@ -27,8 +30,16 @@ export interface Post {
   is_public: boolean;
   like_count: number;
   comment_count: number;
+  liked: boolean;
   created_at: string;
-  author?: Profile;
+  author: Author;
+}
+
+export interface PublicPost {
+  id: string;
+  content: string;
+  media_urls: string[];
+  created_at: string;
 }
 
 export interface Comment {
@@ -37,7 +48,7 @@ export interface Comment {
   user_id: string;
   content: string;
   created_at: string;
-  author?: Profile;
+  author: Author;
 }
 
 export interface Message {
@@ -61,12 +72,14 @@ export interface Album {
 
 export interface Media {
   id: string;
-  user_id: string | null;
-  album_id: string | null;
   url: string;
   type: string;
   caption: string | null;
   created_at: string;
+}
+
+export interface AlbumWithMedia extends Album {
+  media: Media[];
 }
 
 export interface Invitation {
@@ -74,10 +87,11 @@ export interface Invitation {
   email: string;
   invited_by: string | null;
   accepted_at: string | null;
+  expires_at: string;
   created_at: string;
 }
 
-export function displayName(p?: Pick<Profile, "display_name" | "first_name" | "last_name" | "email"> | null) {
+export function displayName(p?: Pick<Author, "display_name" | "first_name" | "last_name" | "email"> | null) {
   if (!p) return "Unknown";
   return p.display_name || `${p.first_name} ${p.last_name}`.trim() || p.email;
 }

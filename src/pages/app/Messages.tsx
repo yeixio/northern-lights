@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
+import { api } from "../../lib/api";
+import { useLive } from "../../lib/live";
 import { useAuth } from "../../auth/AuthProvider";
 import { displayName, type Message, type Profile } from "../../lib/types";
 import { timeAgo } from "../../lib/format";
@@ -8,32 +9,23 @@ import Avatar from "../../components/Avatar";
 
 export default function Messages() {
   const { id: otherId } = useParams();
-  const { profile: me } = useAuth();
+  const { user: me } = useAuth();
   const [people, setPeople] = useState<Record<string, Profile>>({});
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
   const bottom = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
-    if (!me) return;
-    const { data } = await supabase
-      .from("messages").select("*")
-      .or(`sender_id.eq.${me.id},recipient_id.eq.${me.id}`)
-      .order("created_at");
-    setMessages((data as Message[]) ?? []);
-  }, [me]);
+    setMessages(await api.get<Message[]>("/api/messages"));
+  }, []);
 
   useEffect(() => {
-    supabase.from("profiles").select("*").eq("is_approved", true).then(({ data }) => {
-      setPeople(Object.fromEntries(((data as Profile[]) ?? []).map((p) => [p.id, p])));
+    api.get<Profile[]>("/api/people").then((list) => {
+      setPeople(Object.fromEntries(list.map((p) => [p.id, p])));
     });
     void load();
-    const channel = supabase
-      .channel("messages")
-      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => void load())
-      .subscribe();
-    return () => void supabase.removeChannel(channel);
   }, [load]);
+  useLive("messages", () => void load());
 
   // Latest message per conversation partner, newest first.
   const threads = useMemo(() => {
@@ -50,13 +42,13 @@ export default function Messages() {
   useEffect(() => {
     bottom.current?.scrollIntoView({ behavior: "smooth" });
     const unread = conversation.filter((m) => m.recipient_id === me?.id && !m.read).map((m) => m.id);
-    if (unread.length) void supabase.from("messages").update({ read: true }).in("id", unread);
+    if (unread.length) void api.post("/api/messages/read", { ids: unread });
   }, [conversation.length, otherId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function send(e: React.FormEvent) {
     e.preventDefault();
-    if (!me || !otherId || !draft.trim()) return;
-    await supabase.from("messages").insert({ sender_id: me.id, recipient_id: otherId, content: draft.trim() });
+    if (!otherId || !draft.trim()) return;
+    await api.post("/api/messages", { recipient_id: otherId, content: draft });
     setDraft("");
     await load();
   }

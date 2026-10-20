@@ -1,0 +1,23 @@
+Northern Lights is starting.
+{{- if .Values.ingress.enabled }}
+{{- range .Values.ingress.hosts }}
+
+Open http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}
+{{- end }}
+{{- else }}
+
+Reach it with:
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "northern-lights.fullname" . }} 3000:{{ .Values.service.port }}
+then open http://localhost:3000
+{{- end }}
+
+The first visit asks you to create the admin account.
+{{- if not .Values.env.APP_URL }}
+
+Set env.APP_URL to the site's public address so invite and reset links point
+to the right place.
+{{- end }}
+{{- if not .Values.persistence.enabled }}
+
+WARNING: persistence is off, so the database and photos are lost when the pod restarts.
+{{- end }}

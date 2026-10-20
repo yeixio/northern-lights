@@ -1,0 +1,35 @@
+[Unit]
+Description=Northern Lights, a self-hosted private social site
+Documentation=https://github.com/yeixio/northern-lights
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=northern-lights
+Group=northern-lights
+# Settings live in /etc/northern-lights/northern-lights.env.
+Environment=NODE_ENV=production
+Environment=ENV_FILE=/etc/northern-lights/northern-lights.env
+Environment=DATA_DIR=/var/lib/northern-lights
+WorkingDirectory=/var/lib/northern-lights
+ExecStart=/usr/bin/northern-lights
+Restart=on-failure
+RestartSec=5
+
+# Sandboxing. The service can only write to its data directory.
+StateDirectory=northern-lights
+StateDirectoryMode=0750
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

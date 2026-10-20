@@ -85,9 +85,72 @@ DOMAIN=family.example.com docker compose -f docker-compose.yml -f docker-compose
 
 Uncomment the `db` service and `DATABASE_URL` in `docker-compose.yml`.
 
-### Without Docker
+### Debian and Ubuntu (apt)
 
-Requires Node.js 20.12 or newer.
+Packages for amd64 and arm64 run on Debian 12+, Ubuntu 22.04+ and Raspberry Pi OS
+(64-bit). They include their own Node.js and run as a systemd service.
+
+```sh
+sudo install -d /etc/apt/keyrings
+sudo curl -fsSL -o /etc/apt/keyrings/northern-lights.gpg https://yeixio.github.io/northern-lights/northern-lights.gpg
+echo "deb [signed-by=/etc/apt/keyrings/northern-lights.gpg] https://yeixio.github.io/northern-lights/apt stable main" \
+  | sudo tee /etc/apt/sources.list.d/northern-lights.list
+sudo apt-get update && sudo apt-get install northern-lights
+sudo systemctl enable --now northern-lights
+```
+
+### Fedora, RHEL, Rocky and Alma Linux (dnf / yum)
+
+For Fedora and RHEL-compatible 9 or newer:
+
+```sh
+sudo curl -fsSL -o /etc/yum.repos.d/northern-lights.repo https://yeixio.github.io/northern-lights/northern-lights.repo
+sudo dnf install northern-lights
+sudo systemctl enable --now northern-lights
+```
+
+With either package, open http://localhost:3000 to create the admin account.
+Settings are in `/etc/northern-lights/northern-lights.env` (restart the service
+after changing it) and data lives in `/var/lib/northern-lights`. The `.deb` and
+`.rpm` files are also attached to each
+[release](https://github.com/yeixio/northern-lights/releases) if you'd rather
+install one directly.
+
+### macOS and Linux with Homebrew
+
+```sh
+brew tap yeixio/northern-lights https://github.com/yeixio/northern-lights
+brew install northern-lights
+brew services start northern-lights
+```
+
+Settings are in `$(brew --prefix)/etc/northern-lights.env` and data in
+`$(brew --prefix)/var/northern-lights`. `brew install --HEAD northern-lights`
+builds the main branch instead of the latest release.
+
+### Kubernetes
+
+With [Helm](https://helm.sh):
+
+```sh
+helm install northern-lights oci://ghcr.io/yeixio/charts/northern-lights \
+  --namespace northern-lights --create-namespace \
+  --set env.APP_URL=https://family.example.com \
+  --set ingress.enabled=true --set 'ingress.hosts[0].host=family.example.com'
+```
+
+See [`charts/northern-lights/values.yaml`](charts/northern-lights/values.yaml) for
+every option (storage size and class, TLS, passwords kept in a Secret, Postgres).
+
+Or apply the plain manifests in [`deploy/kubernetes`](deploy/kubernetes) with
+`kubectl apply -n northern-lights -k deploy/kubernetes`.
+
+Either way the app runs as one pod with a persistent volume for the SQLite
+database and uploads. To run more than one copy, use Postgres and S3 storage.
+
+### From source
+
+Requires Node.js 22 or newer.
 
 ```sh
 npm install
@@ -129,7 +192,7 @@ The database schema is created and upgraded automatically when the server starts
 
 ## Putting it on the internet
 
-With Docker, use the Caddy setup above. Otherwise, run it behind any reverse
+With Docker, use the Caddy setup above. On Kubernetes, use an Ingress. Otherwise, run it behind any reverse
 proxy that handles HTTPS (Caddy, nginx, a Cloudflare Tunnel) and set `APP_URL`
 to the public address. With Caddy installed directly, that's:
 
@@ -141,7 +204,8 @@ family.example.com {
 
 ## Backups
 
-- **SQLite:** copy the `data` folder. With Docker, the files are in the
+- **SQLite:** copy the `data` folder (`/var/lib/northern-lights` with the Linux
+  packages). With Docker, the files are in the
   `northern-data` volume; `docker compose cp app:/data ./backup` copies them out. For a backup while
   it's running, use `sqlite3 data/northern-lights.db ".backup backup.db"`.
 - **Postgres:** `pg_dump`, plus the uploads folder or bucket.
@@ -170,6 +234,12 @@ src/
   components/      layouts, post card, composer, avatars
   pages/public/    public page, gallery, login, setup, invite and reset pages
   pages/app/       feed, people, profiles, messages, albums, invite, admin
+packaging/
+  linux/           .deb/.rpm packaging (nfpm), systemd service, config file
+  repos/           builds the signed apt and dnf repositories
+Formula/           Homebrew formula (this repo is also a tap)
+charts/            Helm chart
+deploy/kubernetes/ plain Kubernetes manifests (kustomize)
 docs/
   recovered-schema.md   notes on the original project this was rebuilt from
 ```

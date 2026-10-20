@@ -52,8 +52,7 @@ export function createApp(db: DB, storage: Storage, opts: { serveClient?: boolea
   app.route("/files", fileRoutes(storage));
 
   if (opts.serveClient && fs.existsSync(config.clientDir)) {
-    const root = path.relative(process.cwd(), config.clientDir);
-    app.use("/*", serveStatic({ root }));
+    app.use("/*", serveStatic({ root: config.clientDir }));
     const index = fs.readFileSync(path.join(config.clientDir, "index.html"), "utf8");
     app.get("*", (c) => c.html(index)); // single-page app fallback
   }

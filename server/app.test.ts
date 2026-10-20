@@ -203,6 +203,54 @@ describe("admin", () => {
     assert.equal((await anon.get("/api/public/site")).data.site_name, "The Smiths");
   });
 
+  test("a fresh site has no theme or home layout yet", async () => {
+    const site = (await anon.get("/api/public/site")).data;
+    assert.equal(site.theme, null);
+    assert.equal(site.home, null);
+  });
+
+  test("admins set the site theme", async () => {
+    const theme = { preset: "fjord", primary: "#0ea5e9", accent: null, mode: "dark", font: "serif", radius: "round" };
+    assert.equal((await friend.put("/api/admin/theme", theme)).status, 403);
+    assert.equal((await admin.put("/api/admin/theme", { ...theme, preset: "neon" })).status, 400);
+    assert.equal((await admin.put("/api/admin/theme", { ...theme, primary: "red; x: y" })).status, 400);
+    assert.equal((await admin.put("/api/admin/theme", theme)).status, 200);
+    assert.deepEqual((await anon.get("/api/public/site")).data.theme, theme);
+  });
+
+  test("admins edit the home page, and its images become public", async () => {
+    const form = new FormData();
+    form.append("file", new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0])], "h.jpg", { type: "image/jpeg" }));
+    const url = (await admin.post("/api/uploads", form)).data[0].url as string;
+    assert.equal((await anon.get(url)).status, 404);
+
+    const home = { sections: [
+      { id: "a", type: "hero", title: "Hello", image: url, buttons: [{ label: "Photos", href: "/gallery" }] },
+      { id: "b", type: "text", heading: "About us", body: "We like hikes." },
+    ] };
+    assert.equal((await friend.put("/api/admin/home", home)).status, 403);
+    assert.equal((await admin.put("/api/admin/home", { sections: [{ id: "x", type: "marquee" }] })).status, 400);
+    const evil = { sections: [{ id: "c", type: "cta", buttons: [{ label: "Go", href: "javascript:alert(1)" }] }] };
+    assert.equal((await admin.put("/api/admin/home", evil)).status, 400);
+
+    assert.equal((await admin.put("/api/admin/home", home)).status, 200);
+    assert.deepEqual((await anon.get("/api/public/site")).data.home, home);
+    assert.equal((await anon.get(url)).status, 200);
+
+    assert.equal((await admin.del("/api/admin/home")).status, 200);
+    assert.equal((await anon.get("/api/public/site")).data.home, null);
+    assert.equal((await anon.get(url)).status, 404);
+  });
+
+  test("members choose their own colors", async () => {
+    assert.equal((await anon.put("/api/me/preferences", { preset: "ember", mode: "dark" })).status, 401);
+    assert.equal((await friend.put("/api/me/preferences", { preset: "ember", mode: "bright" })).status, 400);
+    assert.equal((await friend.put("/api/me/preferences", { preset: "ember", mode: "dark" })).status, 200);
+    const me = (await friend.get("/api/auth/session")).data.user;
+    assert.deepEqual(me.preferences, { preset: "ember", mode: "dark" });
+    assert.equal((await admin.get("/api/auth/session")).data.user.preferences, null);
+  });
+
   test("members cannot promote themselves", async () => {
     assert.equal((await friend.patch(`/api/admin/members/${friendId}`, { is_admin: true })).status, 403);
     const me = await friend.patch("/api/me", { bio: "hello", is_admin: true } as any);

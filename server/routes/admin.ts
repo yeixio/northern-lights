@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
+import { homeSchema, themeSchema } from "../appearance.js";
 import { newToken, requireAdmin, resetExpiry, type AppEnv } from "../auth.js";
 import { now } from "../db/index.js";
 import { publish } from "../events.js";
@@ -31,6 +32,27 @@ export const adminRoutes = new Hono<AppEnv>()
       contact_email: body.contact_email || null,
       updated_at: now(),
     }).where("id", "=", 1).execute();
+    return c.json({ ok: true });
+  })
+
+  .put("/theme", async (c) => {
+    const theme = themeSchema.parse(await c.req.json());
+    await c.get("db").updateTable("site_settings").set({ theme: JSON.stringify(theme), updated_at: now() })
+      .where("id", "=", 1).execute();
+    return c.json({ ok: true });
+  })
+
+  .put("/home", async (c) => {
+    const home = homeSchema.parse(await c.req.json());
+    const json = JSON.stringify(home);
+    if (json.length > 200_000) throw new HTTPException(413, { message: "The home page is too large" });
+    await c.get("db").updateTable("site_settings").set({ home: json, updated_at: now() }).where("id", "=", 1).execute();
+    return c.json({ ok: true });
+  })
+
+  // Back to the starter layout.
+  .delete("/home", async (c) => {
+    await c.get("db").updateTable("site_settings").set({ home: null, updated_at: now() }).where("id", "=", 1).execute();
     return c.json({ ok: true });
   })
 

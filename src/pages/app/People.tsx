@@ -19,11 +19,11 @@ export default function People() {
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {shown.map((p) => (
-          <Link key={p.id} to={`/app/people/${p.id}`} className="card flex items-center gap-3 p-4 hover:border-emerald-300">
+          <Link key={p.id} to={`/app/people/${p.id}`} className="card flex items-center gap-3 p-4 hover:border-primary-300">
             <Avatar profile={p} />
             <div className="min-w-0">
               <div className="truncate font-medium">{displayName(p)}</div>
-              {p.bio && <div className="truncate text-sm text-slate-500">{p.bio}</div>}
+              {p.bio && <div className="truncate text-sm text-ink-500">{p.bio}</div>}
             </div>
           </Link>
         ))}

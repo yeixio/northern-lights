@@ -46,7 +46,7 @@ export default function Invite() {
     <div className="mx-auto max-w-xl space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Invite someone</h1>
-        <p className="text-slate-600">Only invited people can join. Each invite link works once.</p>
+        <p className="text-ink-600">Only invited people can join. Each invite link works once.</p>
       </div>
       <form onSubmit={submit} className="card space-y-3 p-4">
         <input className="input" type="email" required placeholder="friend@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -56,7 +56,7 @@ export default function Invite() {
       </form>
 
       {created && (
-        <div className="card space-y-2 border-emerald-300 bg-emerald-50 p-4 text-sm">
+        <div className="card space-y-2 border-primary-300 bg-primary-50 p-4 text-sm">
           <p>
             {created.emailed
               ? `We emailed an invite to ${created.email}. You can also send them this link yourself:`
@@ -72,17 +72,17 @@ export default function Invite() {
       )}
 
       {sent.length > 0 && (
-        <section className="card divide-y divide-slate-100">
+        <section className="card divide-y divide-ink-100">
           <h2 className="p-4 font-semibold">Invitations</h2>
           {sent.map((i) => (
             <div key={i.id} className="flex items-center justify-between gap-2 px-4 py-2 text-sm">
               <span className="truncate">{i.email}</span>
               <span className="flex shrink-0 items-center gap-2">
-                <span className={i.accepted_at ? "text-emerald-700" : "text-slate-400"}>
+                <span className={i.accepted_at ? "text-primary-700" : "text-ink-400"}>
                   {i.accepted_at ? "Joined" : pending(i) ? `Sent ${timeAgo(i.created_at)}` : "Expired"}
                 </span>
                 {!i.accepted_at && (
-                  <button onClick={() => api.del(`/api/invitations/${i.id}`).then(load)} className="text-slate-400 hover:text-rose-600" aria-label="Cancel invite">
+                  <button onClick={() => api.del(`/api/invitations/${i.id}`).then(load)} className="text-ink-400 hover:text-rose-600" aria-label="Cancel invite">
                     <Trash2 size={14} />
                   </button>
                 )}

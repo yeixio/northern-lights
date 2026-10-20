@@ -55,7 +55,7 @@ export default function ProfilePage() {
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <section className="card overflow-hidden">
-        <div className="aurora-bg h-28" />
+        <div className="aurora h-28" />
         <div className="-mt-12 space-y-3 p-4">
           <div className="flex items-end justify-between">
             <div className="rounded-full ring-4 ring-white"><Avatar profile={person} size="lg" /></div>
@@ -72,11 +72,11 @@ export default function ProfilePage() {
           </div>
           <div>
             <h1 className="text-2xl font-semibold">{displayName(person)}</h1>
-            {person.bio && <p className="mt-1 whitespace-pre-wrap text-slate-600">{person.bio}</p>}
+            {person.bio && <p className="mt-1 whitespace-pre-wrap text-ink-600">{person.bio}</p>}
           </div>
           {error && <p className="text-sm text-rose-600">{error}</p>}
           {editing && (
-            <form onSubmit={save} className="space-y-2 border-t border-slate-100 pt-3">
+            <form onSubmit={save} className="space-y-2 border-t border-ink-100 pt-3">
               <div className="grid grid-cols-2 gap-2">
                 <input className="input" placeholder="First name" value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} />
                 <input className="input" placeholder="Last name" value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} />

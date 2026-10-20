@@ -39,11 +39,13 @@ export default function Login() {
   }
 
   return (
-    <div className="mx-auto max-w-sm px-4 py-16">
-      <form onSubmit={submit} className="card space-y-4 p-6">
+    <div className="bg-gradient-to-b from-primary-50 to-ink-50 px-4 py-16 sm:py-24">
+      <div className="mx-auto max-w-sm">
+      <img src="/favicon.svg" alt="" className="mx-auto mb-6 h-12 w-12 drop-shadow-lg" />
+      <form onSubmit={submit} className="card space-y-4 p-7 shadow-xl">
         <div>
           <h1 className="text-xl font-semibold">{mode === "password" ? "Member login" : "Reset password"}</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-ink-500">
             {mode === "password"
               ? "This network is invite-only. Ask a member to invite you."
               : mailEnabled
@@ -58,17 +60,18 @@ export default function Login() {
           <input className="input" type="password" required placeholder="Password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
         )}
         {error && <p className="text-sm text-rose-600">{error}</p>}
-        {notice && <p className="text-sm text-emerald-700">{notice}</p>}
+        {notice && <p className="text-sm text-primary-700">{notice}</p>}
         {(mode === "password" || mailEnabled) && (
           <button className="btn-primary w-full" disabled={busy}>
             {mode === "password" ? "Sign in" : "Send reset link"}
           </button>
         )}
-        <button type="button" className="w-full text-sm text-slate-500 hover:underline" onClick={() => setMode(mode === "password" ? "reset" : "password")}>
+        <button type="button" className="w-full text-sm text-ink-500 hover:underline" onClick={() => setMode(mode === "password" ? "reset" : "password")}>
           {mode === "password" ? "Forgot your password?" : "Back to sign in"}
         </button>
       </form>
-      <p className="mt-4 text-center text-sm"><Link to="/" className="text-slate-500 hover:underline">Back to the public page</Link></p>
+      <p className="mt-4 text-center text-sm"><Link to="/" className="text-ink-500 hover:underline">Back to the public page</Link></p>
+      </div>
     </div>
   );
 }

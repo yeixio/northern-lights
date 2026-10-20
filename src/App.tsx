@@ -17,39 +17,44 @@ import AlbumManage from "./pages/app/AlbumManage";
 import ImportFacebook from "./pages/app/ImportFacebook";
 import Invite from "./pages/app/Invite";
 import Admin from "./pages/app/Admin";
+import Appearance from "./pages/app/Appearance";
+import { SiteProvider } from "./lib/site";
 
 export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-        <Routes>
-          <Route element={<PublicLayout />}>
-            <Route index element={<Home />} />
-            <Route path="gallery" element={<Gallery />} />
-            <Route path="gallery/:id" element={<AlbumView />} />
-            <Route path="login" element={<Login />} />
-            <Route path="setup" element={<SetPassword mode="setup" />} />
-            <Route path="welcome" element={<SetPassword mode="welcome" />} />
-            <Route path="reset-password" element={<SetPassword mode="reset" />} />
-          </Route>
-          <Route path="app" element={<RequireMember />}>
-            <Route element={<AppLayout />}>
-              <Route index element={<Feed />} />
-              <Route path="people" element={<People />} />
-              <Route path="people/:id" element={<ProfilePage />} />
-              <Route path="messages" element={<Messages />} />
-              <Route path="messages/:id" element={<Messages />} />
-              <Route path="albums" element={<Albums />} />
-              <Route path="albums/:id" element={<AlbumManage />} />
-              <Route path="import/facebook" element={<ImportFacebook />} />
-              <Route path="invite" element={<Invite />} />
-              <Route element={<RequireAdmin />}>
-                <Route path="admin" element={<Admin />} />
+        <SiteProvider>
+          <Routes>
+            <Route element={<PublicLayout />}>
+              <Route index element={<Home />} />
+              <Route path="gallery" element={<Gallery />} />
+              <Route path="gallery/:id" element={<AlbumView />} />
+              <Route path="login" element={<Login />} />
+              <Route path="setup" element={<SetPassword mode="setup" />} />
+              <Route path="welcome" element={<SetPassword mode="welcome" />} />
+              <Route path="reset-password" element={<SetPassword mode="reset" />} />
+            </Route>
+            <Route path="app" element={<RequireMember />}>
+              <Route element={<AppLayout />}>
+                <Route index element={<Feed />} />
+                <Route path="people" element={<People />} />
+                <Route path="people/:id" element={<ProfilePage />} />
+                <Route path="messages" element={<Messages />} />
+                <Route path="messages/:id" element={<Messages />} />
+                <Route path="albums" element={<Albums />} />
+                <Route path="albums/:id" element={<AlbumManage />} />
+                <Route path="import/facebook" element={<ImportFacebook />} />
+                <Route path="invite" element={<Invite />} />
+                <Route path="settings" element={<Appearance />} />
+                <Route element={<RequireAdmin />}>
+                  <Route path="admin" element={<Admin />} />
+                </Route>
               </Route>
             </Route>
-          </Route>
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </SiteProvider>
       </BrowserRouter>
     </AuthProvider>
   );

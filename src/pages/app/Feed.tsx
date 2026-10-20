@@ -22,7 +22,7 @@ export default function Feed() {
     <div className="mx-auto max-w-2xl space-y-4">
       <PostComposer onPosted={reload} />
       {!posts && <Spinner full />}
-      {posts?.length === 0 && <p className="py-12 text-center text-slate-500">No posts yet. Say hello!</p>}
+      {posts?.length === 0 && <p className="py-12 text-center text-ink-500">No posts yet. Say hello!</p>}
       {posts?.map((p) => <PostCard key={p.id} post={p} onChange={reload} />)}
     </div>
   );

@@ -1,14 +1,16 @@
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import type { AppEnv } from "../auth.js";
+import { parseJson } from "../appearance.js";
 import { album, bool } from "../serialize.js";
 
 /** Everything here is readable without signing in. */
 export const publicRoutes = new Hono<AppEnv>()
   .get("/site", async (c) => {
     const s = await c.get("db").selectFrom("site_settings")
-      .select(["site_name", "tagline", "about", "hero_image_url", "contact_email"]).executeTakeFirst();
-    return c.json(s);
+      .select(["site_name", "tagline", "about", "hero_image_url", "contact_email", "theme", "home"])
+      .executeTakeFirstOrThrow();
+    return c.json({ ...s, theme: parseJson(s.theme), home: parseJson(s.home) });
   })
 
   .get("/albums", async (c) => {

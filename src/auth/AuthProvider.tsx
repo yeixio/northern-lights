@@ -1,10 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { api } from "../lib/api";
 import { closeLive } from "../lib/live";
-import type { Profile } from "../lib/types";
+import type { Me } from "../lib/types";
+import type { Preferences } from "../lib/theme";
 
 interface SessionInfo {
-  user: Profile | null;
+  user: Me | null;
   needsSetup: boolean;
   mailEnabled: boolean;
 }
@@ -13,6 +14,7 @@ interface AuthState extends SessionInfo {
   loading: boolean;
   refresh: () => Promise<void>;
   signOut: () => Promise<void>;
+  savePreferences: (p: Preferences) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -37,7 +39,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await refresh();
   };
 
-  return <AuthContext.Provider value={{ ...info, loading, refresh, signOut }}>{children}</AuthContext.Provider>;
+  // Applied right away so the colors change on click; saved in the background.
+  const savePreferences = async (preferences: Preferences) => {
+    setInfo((i) => (i.user ? { ...i, user: { ...i.user, preferences } } : i));
+    await api.put("/api/me/preferences", preferences);
+  };
+
+  return <AuthContext.Provider value={{ ...info, loading, refresh, signOut, savePreferences }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

@@ -7,6 +7,7 @@ import {
 } from "../auth.js";
 import { newId, now } from "../db/index.js";
 import { mailEnabled, sendMail } from "../mail.js";
+import { parseJson } from "../appearance.js";
 import { profile } from "../serialize.js";
 import { appUrl } from "../url.js";
 
@@ -19,7 +20,8 @@ export const authRoutes = new Hono<AppEnv>()
     const db = c.get("db");
     const user = c.get("user");
     const anyUser = await db.selectFrom("users").select("id").limit(1).executeTakeFirst();
-    return c.json({ user: user ? profile(user) : null, needsSetup: !anyUser, mailEnabled: mailEnabled() });
+    const me = user ? { ...profile(user), preferences: parseJson(user.preferences) } : null;
+    return c.json({ user: me, needsSetup: !anyUser, mailEnabled: mailEnabled() });
   })
 
   // First-run: create the admin account. Only works while there are no users.

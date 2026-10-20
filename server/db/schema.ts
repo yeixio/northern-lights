@@ -15,6 +15,7 @@ export interface UsersTable {
   avatar_url: string | null;
   is_admin: number;
   is_active: number;
+  preferences: string | null; // JSON, see server/appearance.ts
   created_at: string;
   updated_at: string;
 }
@@ -52,6 +53,8 @@ export interface SiteSettingsTable {
   about: string | null;
   hero_image_url: string | null;
   contact_email: string | null;
+  theme: string | null; // JSON, see server/appearance.ts
+  home: string | null; // JSON home page sections
   updated_at: string;
 }
 

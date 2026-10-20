@@ -16,18 +16,18 @@ export default function AlbumView() {
   }, [id]);
 
   if (album === undefined) return <Spinner full />;
-  if (album === null) return <p className="p-12 text-center text-slate-500">Album not found.</p>;
+  if (album === null) return <p className="p-12 text-center text-ink-500">Album not found.</p>;
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
-      <Link to="/gallery" className="mb-4 inline-flex items-center gap-1 text-sm text-slate-600 hover:underline">
+      <Link to="/gallery" className="mb-4 inline-flex items-center gap-1 text-sm text-ink-600 hover:underline">
         <ArrowLeft size={16} /> Back
       </Link>
       <h1 className="text-3xl font-semibold">{album.title}</h1>
-      {album.description && <p className="mt-2 text-slate-600">{album.description}</p>}
+      {album.description && <p className="mt-2 text-ink-600">{album.description}</p>}
       <div className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
         {album.media.map((m) => (
-          <button key={m.id} onClick={() => setOpen(m)} className="aspect-square overflow-hidden rounded-lg bg-slate-200">
+          <button key={m.id} onClick={() => setOpen(m)} className="aspect-square overflow-hidden rounded-lg bg-ink-200">
             {m.type === "video"
               ? <video src={m.url} className="h-full w-full object-cover" muted />
               : <img src={m.url} alt={m.caption ?? ""} loading="lazy" className="h-full w-full object-cover" />}

@@ -52,11 +52,11 @@ export default function AlbumManage() {
 
   return (
     <div className="space-y-4">
-      <Link to="/app/albums" className="inline-flex items-center gap-1 text-sm text-slate-600 hover:underline"><ArrowLeft size={16} /> Albums</Link>
+      <Link to="/app/albums" className="inline-flex items-center gap-1 text-sm text-ink-600 hover:underline"><ArrowLeft size={16} /> Albums</Link>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">{album.title}</h1>
-          {album.description && <p className="text-slate-600">{album.description}</p>}
+          {album.description && <p className="text-ink-600">{album.description}</p>}
         </div>
         <div className="flex flex-wrap gap-2">
           <ImagePicker multiple label={busy ? "Uploading…" : "Add photos"} onPick={upload} />
@@ -78,7 +78,7 @@ export default function AlbumManage() {
       {busy && <Spinner />}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
         {album.media.map((m) => (
-          <div key={m.id} className="group relative aspect-square overflow-hidden rounded-lg bg-slate-200">
+          <div key={m.id} className="group relative aspect-square overflow-hidden rounded-lg bg-ink-200">
             <button className="h-full w-full" onClick={() => setOpen(m)}>
               {m.type === "video"
                 ? <video src={m.url} className="h-full w-full object-cover" muted />

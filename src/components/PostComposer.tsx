@@ -53,7 +53,7 @@ export default function PostComposer({ onPosted }: { onPosted: () => void }) {
                 : <img src={URL.createObjectURL(f)} alt="" className="h-20 w-20 rounded-lg object-cover" />}
               <button
                 type="button"
-                className="absolute -top-2 -right-2 rounded-full bg-slate-800 p-0.5 text-white"
+                className="absolute -top-2 -right-2 rounded-full bg-black/70 p-0.5 text-white"
                 onClick={() => setFiles(files.filter((_, j) => j !== i))}
                 aria-label="Remove"
               >

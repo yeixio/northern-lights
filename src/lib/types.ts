@@ -1,3 +1,6 @@
+import type { HomePage } from "./home";
+import type { Preferences, SiteTheme } from "./theme";
+
 export interface Author {
   id: string;
   email: string;
@@ -20,6 +23,13 @@ export interface SiteSettings {
   about: string | null;
   hero_image_url: string | null;
   contact_email: string | null;
+  theme: SiteTheme | null;
+  home: HomePage | null;
+}
+
+/** The signed-in member, with their own appearance choices. */
+export interface Me extends Profile {
+  preferences: Preferences | null;
 }
 
 export interface Post {

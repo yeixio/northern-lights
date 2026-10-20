@@ -1,10 +1,18 @@
-# SQLite (default): the database and uploads live in the "northern-data" volume.
+# Northern Lights
+#
 #   docker compose up -d
 #
-# Postgres: uncomment the `db` service and the DATABASE_URL line, then
-#   docker compose up -d
+# Then open http://localhost:3000 and create your admin account.
+# Update later with:  docker compose pull && docker compose up -d
+#
+# This uses the published image. If it can't be pulled, Compose builds it from
+# this folder instead; `docker compose up -d --build` always builds locally.
+#
+# HTTPS on your own domain: see docker-compose.caddy.yml.
+# Postgres instead of SQLite: uncomment the `db` service and DATABASE_URL below.
 services:
   app:
+    image: ghcr.io/yeixio/northern-lights:${NL_VERSION:-latest}
     build: .
     restart: unless-stopped
     ports:

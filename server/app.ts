@@ -12,6 +12,7 @@ import { adminRoutes } from "./routes/admin.js";
 import { albumRoutes } from "./routes/albums.js";
 import { authRoutes } from "./routes/auth.js";
 import { fileRoutes, uploadRoutes } from "./routes/files.js";
+import { importRoutes } from "./routes/imports.js";
 import { inviteRoutes } from "./routes/invites.js";
 import { liveRoutes } from "./routes/live.js";
 import { messageRoutes } from "./routes/messages.js";
@@ -43,6 +44,7 @@ export function createApp(db: DB, storage: Storage, opts: { serveClient?: boolea
     .route("/", liveRoutes)
     .route("/", uploadRoutes(storage))
     .route("/", albumRoutes(storage))
+    .route("/", importRoutes(storage))
     .route("/", socialRoutes);
   api.notFound((c) => c.json({ error: "Not found" }, 404));
 

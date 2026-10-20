@@ -14,6 +14,7 @@ import ProfilePage from "./pages/app/ProfilePage";
 import Messages from "./pages/app/Messages";
 import Albums from "./pages/app/Albums";
 import AlbumManage from "./pages/app/AlbumManage";
+import ImportFacebook from "./pages/app/ImportFacebook";
 import Invite from "./pages/app/Invite";
 import Admin from "./pages/app/Admin";
 
@@ -40,6 +41,7 @@ export default function App() {
               <Route path="messages/:id" element={<Messages />} />
               <Route path="albums" element={<Albums />} />
               <Route path="albums/:id" element={<AlbumManage />} />
+              <Route path="import/facebook" element={<ImportFacebook />} />
               <Route path="invite" element={<Invite />} />
               <Route element={<RequireAdmin />}>
                 <Route path="admin" element={<Admin />} />

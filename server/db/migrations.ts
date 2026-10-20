@@ -147,6 +147,22 @@ const migrations: Record<string, Migration> = {
         .execute();
     },
   },
+
+  "2026_10_20_002_imports": {
+    async up(db: Kysely<any>) {
+      // Remembers what was brought in from another site (e.g. a Facebook
+      // export), so running the same import again skips what's already here.
+      await db.schema
+        .createTable("imports")
+        .addColumn("user_id", "text", (c) => c.notNull().references("users.id").onDelete("cascade"))
+        .addColumn("source_key", "text", (c) => c.notNull())
+        .addColumn("kind", "text", (c) => c.notNull())
+        .addColumn("ref", "text", (c) => c.notNull())
+        .addColumn("created_at", "text", (c) => c.notNull())
+        .addPrimaryKeyConstraint("imports_pk", ["user_id", "source_key"])
+        .execute();
+    },
+  },
 };
 
 export const migrationProvider: MigrationProvider = {

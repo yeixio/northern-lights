@@ -23,6 +23,8 @@ are stored on disk or in any S3-compatible bucket.
 - Profiles with avatar and bio
 - Live direct messages with unread indicators
 - Shared photo albums with covers and a lightbox viewer
+- Import your photos, videos and albums (and optionally posts) from a Facebook
+  "Download your information" export, with captions and original dates
 - Admin tools: suspend, restore, promote, or remove members, and make reset links
 - Uploaded photos are private to members unless they're used on the public page
 

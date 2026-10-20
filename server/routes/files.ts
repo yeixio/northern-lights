@@ -32,6 +32,17 @@ async function isPublicFile(db: DB, key: string) {
   return Boolean(row);
 }
 
+/** Check and store one uploaded photo or video, returning its URL. */
+export async function saveUpload(db: DB, storage: Storage, ownerId: string, file: File) {
+  if (!ALLOWED.test(file.type)) throw new HTTPException(415, { message: `${file.name}: only photos and videos are allowed` });
+  if (file.size > config.maxUploadBytes) throw new HTTPException(413, { message: `${file.name} is too large` });
+  const key = `${crypto.randomUUID()}.${EXT[file.type]}`;
+  await storage.put(key, Buffer.from(await file.arrayBuffer()), file.type);
+  await db.insertInto("files")
+    .values({ key, owner_id: ownerId, mime: file.type, size: file.size, created_at: now() }).execute();
+  return { key, url: `/files/${key}`, type: file.type.startsWith("video/") ? "video" as const : "image" as const };
+}
+
 export const uploadRoutes = (storage: Storage) => new Hono<AppEnv>()
   .post("/uploads", async (c) => {
     const user = requireUser(c);
@@ -40,13 +51,8 @@ export const uploadRoutes = (storage: Storage) => new Hono<AppEnv>()
     if (files.length === 0) throw new HTTPException(400, { message: "No file uploaded" });
     const out = [];
     for (const file of files) {
-      if (!ALLOWED.test(file.type)) throw new HTTPException(415, { message: `${file.name}: only photos and videos are allowed` });
-      if (file.size > config.maxUploadBytes) throw new HTTPException(413, { message: `${file.name} is too large` });
-      const key = `${crypto.randomUUID()}.${EXT[file.type]}`;
-      await storage.put(key, Buffer.from(await file.arrayBuffer()), file.type);
-      await c.get("db").insertInto("files")
-        .values({ key, owner_id: user.id, mime: file.type, size: file.size, created_at: now() }).execute();
-      out.push({ url: `/files/${key}`, type: file.type.startsWith("video/") ? "video" : "image" });
+      const { url, type } = await saveUpload(c.get("db"), storage, user.id, file);
+      out.push({ url, type });
     }
     return c.json(out, 201);
   });

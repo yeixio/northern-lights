@@ -11,7 +11,7 @@
     "dev:client": "vite",
     "build": "tsc -b && vite build && tsc -p server/tsconfig.json",
     "start": "node dist/server/index.js",
-    "test": "tsx --test server/app.test.ts",
+    "test": "tsx --test server/app.test.ts src/lib/facebook.test.ts",
     "typecheck": "tsc -b && tsc -p server/tsconfig.json --noEmit"
   },
   "dependencies": {

@@ -1,60 +1,48 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Globe, Heart, MessageCircle, Trash2 } from "lucide-react";
-import { supabase } from "../lib/supabase";
+import { api } from "../lib/api";
 import { useAuth } from "../auth/AuthProvider";
 import { displayName, type Comment, type Post } from "../lib/types";
 import { timeAgo } from "../lib/format";
 import Avatar from "./Avatar";
 import MediaGrid from "./MediaGrid";
 
-export default function PostCard({ post, liked, onChange }: {
-  post: Post;
-  liked: boolean;
-  onChange: () => void;
-}) {
-  const { profile } = useAuth();
+export default function PostCard({ post, onChange }: { post: Post; onChange: () => void }) {
+  const { user: profile } = useAuth();
+  const liked = post.liked;
   const [comments, setComments] = useState<Comment[] | null>(null);
   const [draft, setDraft] = useState("");
   const canDelete = profile && (profile.id === post.user_id || profile.is_admin);
 
   async function toggleLike() {
-    if (!profile) return;
-    if (liked) {
-      await supabase.from("reactions").delete().match({ post_id: post.id, user_id: profile.id });
-    } else {
-      await supabase.from("reactions").insert({ post_id: post.id, user_id: profile.id, type: "like" });
-    }
+    if (liked) await api.del(`/api/posts/${post.id}/like`);
+    else await api.post(`/api/posts/${post.id}/like`);
     onChange();
   }
 
   async function loadComments() {
-    const { data } = await supabase
-      .from("comments")
-      .select("*, author:profiles(*)")
-      .eq("post_id", post.id)
-      .order("created_at");
-    setComments((data as Comment[]) ?? []);
+    setComments(await api.get<Comment[]>(`/api/posts/${post.id}/comments`));
   }
 
   async function addComment(e: React.FormEvent) {
     e.preventDefault();
-    if (!profile || !draft.trim()) return;
-    await supabase.from("comments").insert({ post_id: post.id, user_id: profile.id, content: draft.trim() });
+    if (!draft.trim()) return;
+    await api.post(`/api/posts/${post.id}/comments`, { content: draft });
     setDraft("");
     await loadComments();
     onChange();
   }
 
   async function deleteComment(id: string) {
-    await supabase.from("comments").delete().eq("id", id);
+    await api.del(`/api/comments/${id}`);
     await loadComments();
     onChange();
   }
 
   async function deletePost() {
     if (!confirm("Delete this post?")) return;
-    await supabase.from("posts").delete().eq("id", post.id);
+    await api.del(`/api/posts/${post.id}`);
     onChange();
   }
 

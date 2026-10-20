@@ -8,93 +8,123 @@ A self-hosted personal social site. It has two halves:
   news feed with photos, likes and comments, member profiles, direct messages,
   and shared albums. Only people who were invited can sign in.
 
-Built with React, Vite, Tailwind CSS and [Supabase](https://supabase.com)
-(Postgres, Auth, Storage, Realtime, Edge Functions).
+It runs as a single Node.js server with **SQLite** (zero setup, ideal for a home
+server or Raspberry Pi) or **Postgres** (for larger or managed hosting). Photos
+are stored on disk or in any S3-compatible bucket.
 
 ## Features
 
 - Public home page and gallery, edited from the admin screen
-- Invite-only accounts: members invite friends by email; there is no public sign-up
-- Feed with text, photos and video, likes, and comments, updated in real time
+- Invite-only accounts: members create invite links; there is no public sign-up
+- Works without email: invite and password-reset links are shown on screen to
+  pass along yourself. Add SMTP settings and they're emailed too.
+- Feed with text, photos and video, likes, and comments, updated live
 - Choose per post or per album whether it also appears on the public page
 - Profiles with avatar and bio
-- Real-time direct messages with unread indicators
-- Photo albums with covers and a lightbox viewer
-- Admin tools: approve, suspend, promote, or remove members
-- Row-level security on every table, so privacy is enforced by the database, not just the UI
+- Live direct messages with unread indicators
+- Shared photo albums with covers and a lightbox viewer
+- Admin tools: suspend, restore, promote, or remove members, and make reset links
+- Uploaded photos are private to members unless they're used on the public page
 
-## Getting started
+## Quick start
 
-### 1. Create a Supabase project
-
-Create a project at [supabase.com](https://supabase.com) (or run locally with
-`supabase start`). Then apply the schema and deploy the invite function with the
-[Supabase CLI](https://supabase.com/docs/guides/cli):
+### Docker
 
 ```sh
-supabase link --project-ref <your-project-ref>
-supabase db push
-supabase functions deploy invite-user
+git clone https://github.com/yeixio/northern-lights.git
+cd northern-lights
+docker compose up -d
 ```
 
-### 2. Lock down sign-ups
+Open http://localhost:3000. The first visit asks you to create the admin
+account. Your database and photos live in the `northern-data` Docker volume.
 
-In the Supabase dashboard, open **Authentication → Sign In / Providers** and turn
-off **Allow new users to sign up**. Under **Authentication → URL Configuration**,
-set the Site URL to where you'll host the app and add `<site>/welcome` and
-`<site>/reset-password` as redirect URLs. (Local development already has these
-settings in `supabase/config.toml`.)
+To use Postgres instead, uncomment the `db` service and `DATABASE_URL` in
+`docker-compose.yml`.
 
-### 3. Create the first admin
+### Without Docker
 
-In **Authentication → Users**, use **Invite user** (or **Add user**) with your
-own email. The first account ever created becomes the site admin automatically.
-
-### 4. Run the app
+Requires Node.js 20.12 or newer.
 
 ```sh
-cp .env.example .env.local   # fill in your project URL and anon key
 npm install
-npm run dev
+npm run build
+npm start
 ```
 
-Open http://localhost:5173. Sign in, then visit **Admin** to fill in the public
-page and **Invite** to bring people in.
+Data goes in `./data` by default. Copy `.env.example` to `.env` to change any
+setting.
 
-### Deploying
+### Development
 
-`npm run build` produces a static site in `dist/` that you can host on Netlify,
-Vercel, Cloudflare Pages, GitHub Pages, or any static host. Configure the host
-to serve `index.html` for unknown paths (single-page app fallback) and set the
-`VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` environment variables at build time.
+```sh
+npm install
+npm run dev      # API on :3000, Vite dev server with hot reload on :5173
+npm test         # API tests against in-memory SQLite
+TEST_DATABASE_URL=postgres://localhost/northern_test npm test   # same tests on Postgres
+```
+
+## Configuration
+
+All settings are environment variables (or lines in `.env`). Everything is optional.
+
+| Variable | Default | What it does |
+| --- | --- | --- |
+| `PORT` | `3000` | Port to listen on |
+| `DATA_DIR` | `./data` | Where the SQLite file and uploads go |
+| `DATABASE_URL` | `sqlite:$DATA_DIR/northern-lights.db` | `sqlite:/path/to/file.db` or `postgres://user:pass@host:5432/db` |
+| `APP_URL` | the request's address | Public URL, used in invite/reset links. An `https://` URL also makes the login cookie Secure. |
+| `SMTP_URL` | off | e.g. `smtps://user:pass@smtp.example.com:465`. Turns on invite and reset emails. |
+| `MAIL_FROM` | `Northern Lights <no-reply@localhost>` | Sender for those emails |
+| `STORAGE` | `local` | `local` or `s3` |
+| `MAX_UPLOAD_MB` | `50` | Largest photo or video allowed |
+| `S3_BUCKET`, `S3_REGION`, `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_FORCE_PATH_STYLE` | | For `STORAGE=s3`. Works with AWS, Backblaze B2, Cloudflare R2, MinIO and others. |
+| `SESSION_DAYS` | `30` | How long a login lasts |
+| `INVITE_DAYS` | `14` | How long an invite link works |
+
+The database schema is created and upgraded automatically when the server starts.
+
+## Putting it on the internet
+
+Run it behind a reverse proxy that handles HTTPS, such as Caddy, nginx, or a
+Cloudflare Tunnel, and set `APP_URL` to the public address. With Caddy that's one line:
+
+```
+family.example.com {
+  reverse_proxy localhost:3000
+}
+```
+
+## Backups
+
+- **SQLite:** copy the `data` folder (or the Docker volume). For a backup while
+  it's running, use `sqlite3 data/northern-lights.db ".backup backup.db"`.
+- **Postgres:** `pg_dump`, plus the uploads folder or bucket.
 
 ## How access works
 
 | Who | Can see |
 | --- | --- |
-| Anyone | Site settings, public posts, public albums and their photos |
-| Signed in, not approved | Only their own profile and a "waiting for approval" page |
-| Member (approved) | Everything in the network; can post, comment, like, message, create albums, and invite |
+| Anyone | The public page: site info, public posts, public albums and their photos |
+| Member | Everything in the network; can post, comment, like, message, add to albums, and invite |
 | Admin | Everything members can, plus editing the public page and managing members |
 
-People who sign up through an invite are approved automatically. Anyone else an
-admin adds by hand starts unapproved until an admin approves them.
-
-Uploaded files live in a public `media` storage bucket under random file names,
-so a photo's URL works for anyone who has it. The database rows that list
-those URLs are private to members unless marked public.
+Every check happens on the server. The browser never talks to the database.
 
 ## Project layout
 
 ```
+server/
+  index.ts         starts the server
+  app.ts           routes, error handling, serving the built front end
+  db/              Kysely schema and migrations (SQLite + Postgres)
+  routes/          auth, public, posts, messages, albums, files, invites, admin, live updates
+  app.test.ts      end-to-end API tests
 src/
-  auth/            session + profile context, route guards
+  auth/            session context, route guards
   components/      layouts, post card, composer, avatars
-  pages/public/    public page, gallery, login, invite landing
+  pages/public/    public page, gallery, login, setup, invite and reset pages
   pages/app/       feed, people, profiles, messages, albums, invite, admin
-supabase/
-  migrations/      database schema, RLS policies, triggers, storage bucket
-  functions/       invite-user edge function
 docs/
   recovered-schema.md   notes on the original project this was rebuilt from
 ```

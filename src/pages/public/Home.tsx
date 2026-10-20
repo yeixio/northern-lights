@@ -1,21 +1,19 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
+import { api } from "../../lib/api";
 import { useSiteSettings } from "../../lib/useSiteSettings";
-import type { Album, Post } from "../../lib/types";
+import type { Album, PublicPost } from "../../lib/types";
 import { timeAgo } from "../../lib/format";
 import MediaGrid from "../../components/MediaGrid";
 
 export default function Home() {
   const settings = useSiteSettings();
   const [albums, setAlbums] = useState<Album[]>([]);
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [posts, setPosts] = useState<PublicPost[]>([]);
 
   useEffect(() => {
-    supabase.from("albums").select("*").eq("is_public", true).order("created_at", { ascending: false }).limit(6)
-      .then(({ data }) => setAlbums((data as Album[]) ?? []));
-    supabase.from("posts").select("*").eq("is_public", true).order("created_at", { ascending: false }).limit(10)
-      .then(({ data }) => setPosts((data as Post[]) ?? []));
+    api.get<Album[]>("/api/public/albums").then((a) => setAlbums(a.slice(0, 6))).catch(() => undefined);
+    api.get<PublicPost[]>("/api/public/posts").then(setPosts).catch(() => undefined);
   }, []);
 
   return (

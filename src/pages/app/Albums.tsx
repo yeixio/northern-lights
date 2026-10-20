@@ -1,24 +1,20 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../../lib/supabase";
-import { useAuth } from "../../auth/AuthProvider";
+import { api } from "../../lib/api";
 import type { Album } from "../../lib/types";
 import { AlbumGrid } from "../public/Home";
 
 export default function Albums() {
-  const { profile } = useAuth();
   const [albums, setAlbums] = useState<Album[]>([]);
   const [title, setTitle] = useState("");
   const [isPublic, setIsPublic] = useState(false);
 
-  const load = () =>
-    supabase.from("albums").select("*").order("created_at", { ascending: false })
-      .then(({ data }) => setAlbums((data as Album[]) ?? []));
+  const load = () => api.get<Album[]>("/api/albums").then(setAlbums);
   useEffect(() => void load(), []);
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
-    if (!profile || !title.trim()) return;
-    await supabase.from("albums").insert({ title: title.trim(), owner_id: profile.id, is_public: isPublic });
+    if (!title.trim()) return;
+    await api.post("/api/albums", { title, is_public: isPublic });
     setTitle("");
     await load();
   }

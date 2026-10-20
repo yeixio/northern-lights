@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../../lib/supabase";
+import { api } from "../../lib/api";
 import type { Album } from "../../lib/types";
 import { AlbumGrid } from "./Home";
 
 export default function Gallery() {
   const [albums, setAlbums] = useState<Album[] | null>(null);
   useEffect(() => {
-    supabase.from("albums").select("*").eq("is_public", true).order("created_at", { ascending: false })
-      .then(({ data }) => setAlbums((data as Album[]) ?? []));
+    api.get<Album[]>("/api/public/albums").then(setAlbums).catch(() => setAlbums([]));
   }, []);
   return (
     <div className="mx-auto max-w-5xl px-4 py-12">

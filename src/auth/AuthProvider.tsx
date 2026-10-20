@@ -1,61 +1,43 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
-import type { Session } from "@supabase/supabase-js";
-import { supabase } from "../lib/supabase";
+import { api } from "../lib/api";
+import { closeLive } from "../lib/live";
 import type { Profile } from "../lib/types";
 
-interface AuthState {
-  session: Session | null;
-  profile: Profile | null;
+interface SessionInfo {
+  user: Profile | null;
+  needsSetup: boolean;
+  mailEnabled: boolean;
+}
+
+interface AuthState extends SessionInfo {
   loading: boolean;
-  refreshProfile: () => Promise<void>;
+  refresh: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [info, setInfo] = useState<SessionInfo>({ user: null, needsSetup: false, mailEnabled: false });
   const [loading, setLoading] = useState(true);
 
-  const loadProfile = useCallback(async (s: Session | null) => {
-    if (!s) {
-      setProfile(null);
-      return;
+  const refresh = useCallback(async () => {
+    try {
+      setInfo(await api.get<SessionInfo>("/api/auth/session"));
+    } finally {
+      setLoading(false);
     }
-    const { data } = await supabase.from("profiles").select("*").eq("id", s.user.id).maybeSingle();
-    setProfile((data as Profile) ?? null);
   }, []);
 
-  useEffect(() => {
-    supabase.auth.getSession().then(async ({ data }) => {
-      setSession(data.session);
-      await loadProfile(data.session);
-      setLoading(false);
-    });
-    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
-      setSession(s);
-      if (event === "TOKEN_REFRESHED") return;
-      setLoading(true);
-      // Defer the query: supabase-js warns against awaiting inside this callback.
-      setTimeout(() => {
-        void loadProfile(s).finally(() => setLoading(false));
-      }, 0);
-    });
-    return () => sub.subscription.unsubscribe();
-  }, [loadProfile]);
+  useEffect(() => void refresh(), [refresh]);
 
-  const value: AuthState = {
-    session,
-    profile,
-    loading,
-    refreshProfile: () => loadProfile(session),
-    signOut: async () => {
-      await supabase.auth.signOut();
-    },
+  const signOut = async () => {
+    await api.post("/api/auth/logout");
+    closeLive();
+    await refresh();
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ ...info, loading, refresh, signOut }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

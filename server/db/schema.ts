@@ -1,0 +1,139 @@
+import type { Insertable, Selectable, Updateable } from "kysely";
+
+// Column types are kept portable across SQLite and Postgres:
+// ids are text UUIDs, timestamps are ISO-8601 text, booleans are 0/1 integers,
+// and lists are JSON text.
+
+export interface UsersTable {
+  id: string;
+  email: string;
+  password_hash: string;
+  first_name: string;
+  last_name: string;
+  display_name: string | null;
+  bio: string | null;
+  avatar_url: string | null;
+  is_admin: number;
+  is_active: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SessionsTable {
+  id: string; // sha256 of the cookie token
+  user_id: string;
+  expires_at: string;
+  created_at: string;
+}
+
+export interface InvitationsTable {
+  id: string;
+  token_hash: string;
+  email: string;
+  invited_by: string | null;
+  message: string | null;
+  expires_at: string;
+  accepted_at: string | null;
+  created_at: string;
+}
+
+export interface PasswordResetsTable {
+  token_hash: string;
+  user_id: string;
+  expires_at: string;
+  used_at: string | null;
+  created_at: string;
+}
+
+export interface SiteSettingsTable {
+  id: number;
+  site_name: string;
+  tagline: string | null;
+  about: string | null;
+  hero_image_url: string | null;
+  contact_email: string | null;
+  updated_at: string;
+}
+
+export interface PostsTable {
+  id: string;
+  user_id: string;
+  content: string;
+  media_urls: string; // JSON array
+  is_public: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CommentsTable {
+  id: string;
+  post_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+}
+
+export interface ReactionsTable {
+  id: string;
+  post_id: string;
+  user_id: string;
+  type: string;
+  created_at: string;
+}
+
+export interface MessagesTable {
+  id: string;
+  sender_id: string;
+  recipient_id: string;
+  content: string;
+  read: number;
+  created_at: string;
+}
+
+export interface AlbumsTable {
+  id: string;
+  owner_id: string | null;
+  title: string;
+  description: string | null;
+  cover_url: string | null;
+  is_public: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MediaTable {
+  id: string;
+  user_id: string | null;
+  album_id: string;
+  url: string;
+  type: string;
+  caption: string | null;
+  created_at: string;
+}
+
+export interface FilesTable {
+  key: string;
+  owner_id: string | null;
+  mime: string;
+  size: number;
+  created_at: string;
+}
+
+export interface Database {
+  users: UsersTable;
+  sessions: SessionsTable;
+  invitations: InvitationsTable;
+  password_resets: PasswordResetsTable;
+  site_settings: SiteSettingsTable;
+  posts: PostsTable;
+  comments: CommentsTable;
+  reactions: ReactionsTable;
+  messages: MessagesTable;
+  albums: AlbumsTable;
+  media: MediaTable;
+  files: FilesTable;
+}
+
+export type User = Selectable<UsersTable>;
+export type NewUser = Insertable<UsersTable>;
+export type UserUpdate = Updateable<UsersTable>;

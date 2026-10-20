@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Mail } from "lucide-react";
-import { supabase } from "../../lib/supabase";
-import { uploadMedia } from "../../lib/storage";
+import { api, errorText } from "../../lib/api";
+import { uploadFiles } from "../../lib/storage";
 import { useAuth } from "../../auth/AuthProvider";
 import { displayName, type Profile } from "../../lib/types";
 import Avatar from "../../components/Avatar";
@@ -13,37 +13,41 @@ import { usePosts } from "./Feed";
 
 export default function ProfilePage() {
   const { id } = useParams();
-  const { profile: me, refreshProfile } = useAuth();
+  const { user: me, refresh } = useAuth();
   const [person, setPerson] = useState<Profile | null>(null);
   const [editing, setEditing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ first_name: "", last_name: "", display_name: "", bio: "" });
-  const { posts, liked, reload } = usePosts(id);
+  const { posts, reload } = usePosts(id);
   const isMe = me?.id === id;
 
   useEffect(() => {
-    supabase.from("profiles").select("*").eq("id", id!).maybeSingle().then(({ data }) => {
-      const p = data as Profile | null;
+    api.get<Profile>(`/api/people/${id}`).then((p) => {
       setPerson(p);
-      if (p) setForm({ first_name: p.first_name, last_name: p.last_name, display_name: p.display_name ?? "", bio: p.bio ?? "" });
+      setForm({ first_name: p.first_name, last_name: p.last_name, display_name: p.display_name ?? "", bio: p.bio ?? "" });
     });
   }, [id]);
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
-    const { data } = await supabase.from("profiles")
-      .update({ ...form, display_name: form.display_name || null, bio: form.bio || null })
-      .eq("id", id!).select().single();
-    if (data) setPerson(data as Profile);
-    setEditing(false);
-    await refreshProfile();
+    try {
+      setPerson(await api.patch<Profile>("/api/me", form));
+      setEditing(false);
+      await refresh();
+    } catch (err) {
+      setError(errorText(err));
+    }
   }
 
   async function changeAvatar([file]: File[]) {
-    if (!file || !me) return;
-    const avatar_url = await uploadMedia(`avatars/${me.id}`, file);
-    const { data } = await supabase.from("profiles").update({ avatar_url }).eq("id", me.id).select().single();
-    if (data) setPerson(data as Profile);
-    await refreshProfile();
+    if (!file) return;
+    try {
+      const [up] = await uploadFiles([file]);
+      setPerson(await api.patch<Profile>("/api/me", { avatar_url: up.url }));
+      await refresh();
+    } catch (err) {
+      setError(errorText(err));
+    }
   }
 
   if (!person) return <Spinner full />;
@@ -70,6 +74,7 @@ export default function ProfilePage() {
             <h1 className="text-2xl font-semibold">{displayName(person)}</h1>
             {person.bio && <p className="mt-1 whitespace-pre-wrap text-slate-600">{person.bio}</p>}
           </div>
+          {error && <p className="text-sm text-rose-600">{error}</p>}
           {editing && (
             <form onSubmit={save} className="space-y-2 border-t border-slate-100 pt-3">
               <div className="grid grid-cols-2 gap-2">
@@ -83,7 +88,7 @@ export default function ProfilePage() {
           )}
         </div>
       </section>
-      {posts?.map((p) => <PostCard key={p.id} post={p} liked={liked.has(p.id)} onChange={reload} />)}
+      {posts?.map((p) => <PostCard key={p.id} post={p} onChange={reload} />)}
     </div>
   );
 }

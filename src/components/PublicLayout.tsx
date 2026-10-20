@@ -3,7 +3,7 @@ import { useAuth } from "../auth/AuthProvider";
 import { useSiteSettings } from "../lib/useSiteSettings";
 
 export default function PublicLayout() {
-  const { session } = useAuth();
+  const { user } = useAuth();
   const settings = useSiteSettings();
   return (
     <div className="flex min-h-screen flex-col">
@@ -15,7 +15,7 @@ export default function PublicLayout() {
           </Link>
           <div className="flex items-center gap-4 text-sm">
             <Link to="/gallery" className="hover:text-emerald-200">Gallery</Link>
-            {session ? (
+            {user ? (
               <Link to="/app" className="rounded-lg bg-white/15 px-3 py-1.5 hover:bg-white/25">Open network</Link>
             ) : (
               <Link to="/login" className="rounded-lg bg-white/15 px-3 py-1.5 hover:bg-white/25">Member login</Link>

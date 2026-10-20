@@ -1,9 +1,8 @@
-import type { Profile } from "../lib/types";
-import { displayName } from "../lib/types";
+import { displayName, type Author } from "../lib/types";
 
 const sizes = { sm: "h-8 w-8 text-xs", md: "h-10 w-10 text-sm", lg: "h-24 w-24 text-2xl" };
 
-export default function Avatar({ profile, size = "md" }: { profile?: Profile | null; size?: keyof typeof sizes }) {
+export default function Avatar({ profile, size = "md" }: { profile?: Author | null; size?: keyof typeof sizes }) {
   const name = displayName(profile);
   if (profile?.avatar_url) {
     return <img src={profile.avatar_url} alt={name} className={`${sizes[size]} shrink-0 rounded-full object-cover`} />;

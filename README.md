@@ -30,19 +30,60 @@ are stored on disk or in any S3-compatible bucket.
 
 ## Quick start
 
-### Docker
+### Docker (recommended)
+
+A ready-made image for regular PCs (amd64) and ARM machines (Apple Silicon,
+Raspberry Pi 4/5, most NAS boxes) is published at
+`ghcr.io/yeixio/northern-lights`. Save this as `docker-compose.yml`:
+
+```yaml
+services:
+  app:
+    image: ghcr.io/yeixio/northern-lights:latest
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - northern-data:/data
+volumes:
+  northern-data:
+```
+
+then run:
 
 ```sh
-git clone https://github.com/yeixio/northern-lights.git
-cd northern-lights
 docker compose up -d
 ```
 
 Open http://localhost:3000. The first visit asks you to create the admin
-account. Your database and photos live in the `northern-data` Docker volume.
+account. Your database and photos live in the `northern-data` volume.
 
-To use Postgres instead, uncomment the `db` service and `DATABASE_URL` in
-`docker-compose.yml`.
+To update to a newer version:
+
+```sh
+docker compose pull && docker compose up -d
+```
+
+Image tags: `latest` is the newest release, `1.2.3` / `1.2` pin a release, and
+`main` follows the main branch.
+
+The repo's own [`docker-compose.yml`](docker-compose.yml) is the same setup with
+the optional settings (email, Postgres) written out. It builds the image from
+source if it can't pull it; `docker compose up -d --build` always builds locally.
+
+#### HTTPS on your own domain
+
+[`docker-compose.caddy.yml`](docker-compose.caddy.yml) adds
+[Caddy](https://caddyserver.com), which gets a free certificate automatically.
+Point your domain at the machine, open ports 80 and 443, then:
+
+```sh
+DOMAIN=family.example.com docker compose -f docker-compose.yml -f docker-compose.caddy.yml up -d
+```
+
+#### Postgres
+
+Uncomment the `db` service and `DATABASE_URL` in `docker-compose.yml`.
 
 ### Without Docker
 
@@ -88,8 +129,9 @@ The database schema is created and upgraded automatically when the server starts
 
 ## Putting it on the internet
 
-Run it behind a reverse proxy that handles HTTPS, such as Caddy, nginx, or a
-Cloudflare Tunnel, and set `APP_URL` to the public address. With Caddy that's one line:
+With Docker, use the Caddy setup above. Otherwise, run it behind any reverse
+proxy that handles HTTPS (Caddy, nginx, a Cloudflare Tunnel) and set `APP_URL`
+to the public address. With Caddy installed directly, that's:
 
 ```
 family.example.com {
@@ -99,7 +141,8 @@ family.example.com {
 
 ## Backups
 
-- **SQLite:** copy the `data` folder (or the Docker volume). For a backup while
+- **SQLite:** copy the `data` folder. With Docker, the files are in the
+  `northern-data` volume; `docker compose cp app:/data ./backup` copies them out. For a backup while
   it's running, use `sqlite3 data/northern-lights.db ".backup backup.db"`.
 - **Postgres:** `pg_dump`, plus the uploads folder or bucket.
 

@@ -1,0 +1,31 @@
+# Optional: serve Northern Lights over HTTPS on your own domain with Caddy,
+# which gets and renews a free Let's Encrypt certificate automatically.
+#
+# 1. Point your domain's DNS at this machine and open ports 80 and 443.
+# 2. Run:
+#      DOMAIN=family.example.com docker compose -f docker-compose.yml -f docker-compose.caddy.yml up -d
+#    (or put DOMAIN=family.example.com in a .env file next to this one)
+services:
+  app:
+    ports: !reset []
+    environment:
+      APP_URL: https://${DOMAIN:?Set DOMAIN to your domain name}
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on: [app]
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  caddy-data:
+  caddy-config:

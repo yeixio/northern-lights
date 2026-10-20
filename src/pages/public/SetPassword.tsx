@@ -31,13 +31,13 @@ export default function SetPassword({ mode }: { mode: "setup" | "welcome" | "res
 
   if (loading || (mode === "welcome" && invite === undefined)) return <Spinner full />;
   if (mode === "setup" && !needsSetup) {
-    return <p className="p-12 text-center text-slate-500">This site is already set up. <a className="underline" href="/login">Sign in</a>.</p>;
+    return <p className="p-12 text-center text-ink-500">This site is already set up. <a className="underline" href="/login">Sign in</a>.</p>;
   }
   if (mode === "welcome" && !invite) {
-    return <p className="p-12 text-center text-slate-500">This invite has expired or was already used. Ask for a new one.</p>;
+    return <p className="p-12 text-center text-ink-500">This invite has expired or was already used. Ask for a new one.</p>;
   }
   if (mode === "reset" && !token) {
-    return <p className="p-12 text-center text-slate-500">This reset link is incomplete. Ask for a new one.</p>;
+    return <p className="p-12 text-center text-ink-500">This reset link is incomplete. Ask for a new one.</p>;
   }
 
   async function submit(e: React.FormEvent) {
@@ -54,7 +54,7 @@ export default function SetPassword({ mode }: { mode: "setup" | "welcome" | "res
         await api.post("/api/auth/password/reset", { token, password });
       }
       await refresh();
-      navigate(mode === "setup" ? "/app/admin" : "/app", { replace: true });
+      navigate(mode === "setup" ? "/" : "/app", { replace: true });
     } catch (err) {
       setError(errorText(err));
       setBusy(false);
@@ -68,13 +68,15 @@ export default function SetPassword({ mode }: { mode: "setup" | "welcome" | "res
   }[mode];
 
   return (
-    <div className="mx-auto max-w-sm px-4 py-16">
-      <form onSubmit={submit} className="card space-y-4 p-6">
+    <div className="bg-gradient-to-b from-primary-50 to-ink-50 px-4 py-16 sm:py-24">
+      <div className="mx-auto max-w-sm">
+      <img src="/favicon.svg" alt="" className="mx-auto mb-6 h-12 w-12 drop-shadow-lg" />
+      <form onSubmit={submit} className="card space-y-4 p-7 shadow-xl">
         <div>
           <h1 className="text-xl font-semibold">{title}</h1>
-          {mode === "setup" && <p className="mt-1 text-sm text-slate-500">This first account is the site admin.</p>}
-          {mode === "welcome" && <p className="mt-1 text-sm text-slate-500">Joining as {invite!.email}</p>}
-          {invite?.message && <p className="mt-3 rounded-lg bg-slate-100 p-3 text-sm italic">“{invite.message}”</p>}
+          {mode === "setup" && <p className="mt-1 text-sm text-ink-500">This first account is the site admin.</p>}
+          {mode === "welcome" && <p className="mt-1 text-sm text-ink-500">Joining as {invite!.email}</p>}
+          {invite?.message && <p className="mt-3 rounded-lg bg-ink-100 p-3 text-sm italic">“{invite.message}”</p>}
         </div>
         {mode === "setup" && (
           <input className="input" type="email" required placeholder="Email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -89,6 +91,7 @@ export default function SetPassword({ mode }: { mode: "setup" | "welcome" | "res
         {error && <p className="text-sm text-rose-600">{error}</p>}
         <button className="btn-primary w-full" disabled={busy}>Continue</button>
       </form>
+      </div>
     </div>
   );
 }

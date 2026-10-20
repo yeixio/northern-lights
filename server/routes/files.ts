@@ -16,13 +16,14 @@ export const fileKey = (url: string) => /^\/files\/([\w.-]+)$/.exec(url)?.[1] ??
 
 /**
  * Is this file referenced by something on the public page? Files are private
- * to members unless they are the header image, or belong to a public post or
- * public album.
+ * to members unless they are the header image, are used on the home page, or
+ * belong to a public post or public album.
  */
 async function isPublicFile(db: DB, key: string) {
   const url = `/files/${key}`;
   const hit = sql<number>`1`.as("hit");
   const row = await db.selectFrom("site_settings").select(hit).where("hero_image_url", "=", url)
+    .union(db.selectFrom("site_settings").select(hit).where("home", "like", `%"${url}"%`))
     .union(db.selectFrom("albums").select(hit).where("is_public", "=", 1).where("cover_url", "=", url))
     .union(db.selectFrom("media").innerJoin("albums", "albums.id", "media.album_id").select(hit)
       .where("albums.is_public", "=", 1).where("media.url", "=", url))

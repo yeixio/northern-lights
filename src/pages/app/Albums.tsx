@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Download } from "lucide-react";
 import { api } from "../../lib/api";
 import type { Album } from "../../lib/types";
-import { AlbumGrid } from "../public/Home";
+import AlbumGrid from "../../components/AlbumGrid";
 
 export default function Albums() {
   const [albums, setAlbums] = useState<Album[]>([]);

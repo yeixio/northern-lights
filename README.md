@@ -14,7 +14,13 @@ are stored on disk or in any S3-compatible bucket.
 
 ## Features
 
-- Public home page and gallery, edited from the admin screen
+- A home page admins edit in place: click any text to change it, add photos,
+  and add, reorder, hide or remove sections (header, text, image and text,
+  highlight cards, photo, albums, updates, call to action). A fresh site starts
+  with a ready-made page and a getting-started guide for the admin.
+- Themes: six palettes, custom colors, light, dark or automatic mode, three
+  typefaces and corner styles. Members can pick their own palette and light or
+  dark mode for the private area.
 - Invite-only accounts: members create invite links; there is no public sign-up
 - Works without email: invite and password-reset links are shown on screen to
   pass along yourself. Add SMTP settings and they're emailed too.
@@ -210,6 +216,23 @@ family.example.com {
   it's running, use `sqlite3 data/northern-lights.db ".backup backup.db"`.
 - **Postgres:** `pg_dump`, plus the uploads folder or bucket.
 
+## Customizing the site
+
+Sign in as an admin and open the home page: an **Edit page** button appears in
+the corner (the Admin screen links there too). While editing, click any text to
+change it, use the toolbar on each section to move, hide, duplicate or delete
+it, and the **+ Add section** buttons to add new ones. **Theme** opens the
+palette, colors, light/dark, type and corner settings with a live preview.
+Nothing changes for visitors until you press **Save changes**.
+
+Each member can choose their own colors and light or dark mode under
+**Appearance** in the members' area. That only changes what they see.
+
+| | |
+| --- | --- |
+| ![A fresh site](docs/screenshots/home-fresh.png) | ![Editing the home page](docs/screenshots/home-editing.png) |
+| ![Theme settings](docs/screenshots/theme-panel.png) | ![A member's appearance settings in dark mode](docs/screenshots/member-appearance-dark.png) |
+
 ## How access works
 
 | Who | Can see |
@@ -227,13 +250,17 @@ server/
   index.ts         starts the server
   app.ts           routes, error handling, serving the built front end
   db/              Kysely schema and migrations (SQLite + Postgres)
+  appearance.ts    what may be saved as a theme, home page or member preference
   routes/          auth, public, posts, messages, albums, files, invites, admin, live updates
   app.test.ts      end-to-end API tests
 src/
   auth/            session context, route guards
-  components/      layouts, post card, composer, avatars
+  components/      layouts, post card, composer, avatars, theme panel
+  components/home/ home page sections and the in-place editor
+  lib/theme.ts     palettes and how site and member colors combine
+  lib/home.ts      home page section types and the starter page
   pages/public/    public page, gallery, login, setup, invite and reset pages
-  pages/app/       feed, people, profiles, messages, albums, invite, admin
+  pages/app/       feed, people, profiles, messages, albums, invite, appearance, admin
 packaging/
   linux/           .deb/.rpm packaging (nfpm), systemd service, config file
   repos/           builds the signed apt and dnf repositories

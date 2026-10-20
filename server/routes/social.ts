@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { sql } from "kysely";
 import { z } from "zod";
+import { preferencesSchema } from "../appearance.js";
 import { requireUser, type AppEnv } from "../auth.js";
 import { newId, now, type DB } from "../db/index.js";
 import { publish } from "../events.js";
@@ -194,4 +195,12 @@ export const socialRoutes = new Hono<AppEnv>()
     }).where("id", "=", user.id).execute();
     const row = await db.selectFrom("users").selectAll().where("id", "=", user.id).executeTakeFirstOrThrow();
     return c.json(profile(row));
+  })
+
+  .put("/me/preferences", async (c) => {
+    const user = requireUser(c);
+    const prefs = preferencesSchema.parse(await c.req.json());
+    await c.get("db").updateTable("users").set({ preferences: JSON.stringify(prefs), updated_at: now() })
+      .where("id", "=", user.id).execute();
+    return c.json(prefs);
   });

@@ -163,6 +163,17 @@ const migrations: Record<string, Migration> = {
         .execute();
     },
   },
+
+  "2026_10_20_003_appearance": {
+    async up(db: Kysely<any>) {
+      // JSON text: the site's theme and home page sections, and each member's
+      // own color preferences. All null until someone customizes them.
+      // (One column per statement: SQLite can't add several at once.)
+      await db.schema.alterTable("site_settings").addColumn("theme", "text").execute();
+      await db.schema.alterTable("site_settings").addColumn("home", "text").execute();
+      await db.schema.alterTable("users").addColumn("preferences", "text").execute();
+    },
+  },
 };
 
 export const migrationProvider: MigrationProvider = {

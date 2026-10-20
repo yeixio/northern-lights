@@ -58,51 +58,51 @@ export default function Messages() {
 
   return (
     <div className="card flex h-[calc(100vh-9rem)] overflow-hidden">
-      <aside className={`${otherId ? "hidden sm:block" : "block"} w-full overflow-y-auto border-r border-slate-200 sm:w-72`}>
+      <aside className={`${otherId ? "hidden sm:block" : "block"} w-full overflow-y-auto border-r border-ink-200 sm:w-72`}>
         <h1 className="p-4 text-lg font-semibold">Messages</h1>
         {threads.map(([id, m]) => (
-          <Link key={id} to={`/app/messages/${id}`} className={`flex gap-3 px-4 py-3 hover:bg-slate-50 ${id === otherId ? "bg-emerald-50" : ""}`}>
+          <Link key={id} to={`/app/messages/${id}`} className={`flex gap-3 px-4 py-3 hover:bg-ink-50 ${id === otherId ? "bg-primary-50" : ""}`}>
             <Avatar profile={people[id]} />
             <div className="min-w-0 flex-1">
               <div className="flex justify-between gap-2">
                 <span className={`truncate ${!m.read && m.recipient_id === me?.id ? "font-bold" : "font-medium"}`}>{displayName(people[id])}</span>
-                <span className="shrink-0 text-xs text-slate-400">{timeAgo(m.created_at)}</span>
+                <span className="shrink-0 text-xs text-ink-400">{timeAgo(m.created_at)}</span>
               </div>
-              <p className="truncate text-sm text-slate-500">{m.content}</p>
+              <p className="truncate text-sm text-ink-500">{m.content}</p>
             </div>
           </Link>
         ))}
-        {newPeople.length > 0 && <p className="px-4 pt-4 pb-1 text-xs font-semibold text-slate-400 uppercase">Start a conversation</p>}
+        {newPeople.length > 0 && <p className="px-4 pt-4 pb-1 text-xs font-semibold text-ink-400 uppercase">Start a conversation</p>}
         {newPeople.map((p) => (
-          <Link key={p.id} to={`/app/messages/${p.id}`} className="flex items-center gap-3 px-4 py-2 hover:bg-slate-50">
+          <Link key={p.id} to={`/app/messages/${p.id}`} className="flex items-center gap-3 px-4 py-2 hover:bg-ink-50">
             <Avatar profile={p} size="sm" /> <span className="text-sm">{displayName(p)}</span>
           </Link>
         ))}
       </aside>
       {otherId ? (
         <section className="flex flex-1 flex-col">
-          <header className="flex items-center gap-3 border-b border-slate-200 p-3">
-            <Link to="/app/messages" className="text-sm text-slate-500 sm:hidden">Back</Link>
+          <header className="flex items-center gap-3 border-b border-ink-200 p-3">
+            <Link to="/app/messages" className="text-sm text-ink-500 sm:hidden">Back</Link>
             <Avatar profile={other} size="sm" />
             <span className="font-medium">{displayName(other)}</span>
           </header>
           <div className="flex-1 space-y-2 overflow-y-auto p-4">
             {conversation.map((m) => (
               <div key={m.id} className={`flex ${m.sender_id === me?.id ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap ${m.sender_id === me?.id ? "bg-emerald-600 text-white" : "bg-slate-100"}`}>
+                <div className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap ${m.sender_id === me?.id ? "bg-primary-600 text-on-primary" : "bg-ink-100"}`}>
                   {m.content}
                 </div>
               </div>
             ))}
             <div ref={bottom} />
           </div>
-          <form onSubmit={send} className="flex gap-2 border-t border-slate-200 p-3">
+          <form onSubmit={send} className="flex gap-2 border-t border-ink-200 p-3">
             <input className="input" placeholder="Type a message" value={draft} onChange={(e) => setDraft(e.target.value)} />
             <button className="btn-primary" disabled={!draft.trim()}>Send</button>
           </form>
         </section>
       ) : (
-        <section className="hidden flex-1 items-center justify-center text-slate-400 sm:flex">Pick a conversation</section>
+        <section className="hidden flex-1 items-center justify-center text-ink-400 sm:flex">Pick a conversation</section>
       )}
     </div>
   );

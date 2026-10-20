@@ -5,7 +5,7 @@
 #
 #   packaging/linux/test-install.sh dist-packages
 set -eu
-dir="$1"
+dir="$(cd "$1" && pwd)" # apt-get needs a path, not a bare name
 
 if command -v apt-get >/dev/null; then
   apt-get update -qq

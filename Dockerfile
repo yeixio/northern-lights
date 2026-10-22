@@ -1,4 +1,4 @@
-FROM node:22-bookworm-slim AS build
+FROM node:25-bookworm-slim AS build
 # better-sqlite3 is a native module. When no prebuilt binary matches the
 # platform (for example arm64 on Apple Silicon), npm compiles it from source.
 RUN apt-get update \
@@ -10,7 +10,7 @@ RUN npm ci
 COPY . .
 RUN npm run build && npm prune --omit=dev
 
-FROM node:22-bookworm-slim
+FROM node:25-bookworm-slim
 LABEL org.opencontainers.image.source="https://github.com/yeixio/northern-lights" \
       org.opencontainers.image.description="Self-hosted private social site with a public page" \
       org.opencontainers.image.licenses="MIT"

@@ -12,7 +12,10 @@
     "build": "tsc -b && vite build && tsc -p server/tsconfig.json",
     "start": "node dist/server/index.js",
     "test": "tsx --test server/app.test.ts src/lib/facebook.test.ts",
-    "typecheck": "tsc -b && tsc -p server/tsconfig.json --noEmit"
+    "typecheck": "tsc -b && tsc -p server/tsconfig.json --noEmit && tsc -p scripts/tsconfig.json",
+    "demo": "npm run build && tsx scripts/demo/seed.ts --serve",
+    "demo:seed": "tsx scripts/demo/seed.ts",
+    "screenshots": "tsx scripts/demo/screenshots.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1153.0",
@@ -38,6 +41,7 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
     "concurrently": "^10.0.6",
+    "playwright": "^1.56.1",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.23.15",
     "typescript": "~5.9",

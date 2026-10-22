@@ -1,5 +1,11 @@
 # Northern Lights
 
+[![CI](https://github.com/yeixio/northern-lights/actions/workflows/ci.yml/badge.svg)](https://github.com/yeixio/northern-lights/actions/workflows/ci.yml)
+[![Release](https://github.com/yeixio/northern-lights/actions/workflows/release.yml/badge.svg)](https://github.com/yeixio/northern-lights/actions/workflows/release.yml)
+[![Latest release](https://img.shields.io/github/v/release/yeixio/northern-lights?sort=semver)](https://github.com/yeixio/northern-lights/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+
 A self-hosted personal social site. It has two halves:
 
 - **A public page** for you, your family, or your group: a header, an about
@@ -10,7 +16,30 @@ A self-hosted personal social site. It has two halves:
 
 It runs as a single Node.js server with **SQLite** (zero setup, ideal for a home
 server or Raspberry Pi) or **Postgres** (for larger or managed hosting). Photos
-are stored on disk or in any S3-compatible bucket.
+are stored on disk or in any S3-compatible bucket. Install it with
+[Docker](#docker-recommended), [apt](#debian-and-ubuntu-apt),
+[dnf/yum](#fedora-rhel-rocky-and-alma-linux-dnf--yum),
+[Homebrew](#macos-and-linux-with-homebrew) or [Helm](#kubernetes).
+
+![The public home page of a demo family site](docs/screenshots/demo-home.png)
+
+| The members' feed | Direct messages |
+| --- | --- |
+| ![A feed of family posts with photos, likes and comments](docs/screenshots/demo-feed.png) | ![A conversation between two family members](docs/screenshots/demo-messages.png) |
+| **Shared albums** | **Each member's own colors, dark mode included** |
+| ![The albums page](docs/screenshots/demo-albums.png) | ![The feed in a member's dark fjord palette](docs/screenshots/demo-feed-dark.png) |
+| **A public album** | **Profiles** |
+| ![A public photo album](docs/screenshots/demo-public-album.png) | ![A member's profile page](docs/screenshots/demo-profile.png) |
+
+<p align="center">
+  <img src="docs/screenshots/demo-home-mobile.png" alt="The public page on a phone" width="260">
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/demo-feed-mobile.png" alt="The members' feed on a phone" width="260">
+</p>
+
+<sub>Screenshots show the built-in demo family: every name, message and photo is
+made up, and the photos are painted in code. Run it yourself with
+[`npm run demo`](#try-the-demo).</sub>
 
 ## Features
 
@@ -111,7 +140,7 @@ For Fedora and RHEL-compatible 9 or newer:
 
 ```sh
 sudo curl -fsSL -o /etc/yum.repos.d/northern-lights.repo https://yeixio.github.io/northern-lights/northern-lights.repo
-sudo dnf install northern-lights
+sudo dnf install northern-lights   # or: sudo yum install northern-lights
 sudo systemctl enable --now northern-lights
 ```
 
@@ -167,6 +196,19 @@ npm start
 Data goes in `./data` by default. Copy `.env.example` to `.env` to change any
 setting.
 
+### Try the demo
+
+To look around a site that's already full of people, posts and photos:
+
+```sh
+npm install
+npm run demo
+```
+
+Open http://localhost:3000 and sign in as `astrid@example.com` (an admin) or
+`maja@example.com` (a member), password `northern-lights`. The demo lives in
+`./demo-data`; delete it to start over.
+
 ### Development
 
 ```sh
@@ -175,6 +217,9 @@ npm run dev      # API on :3000, Vite dev server with hot reload on :5173
 npm test         # API tests against in-memory SQLite
 TEST_DATABASE_URL=postgres://localhost/northern_test npm test   # same tests on Postgres
 ```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for more, including how to work against
+the demo data and refresh the screenshots.
 
 ## Configuration
 
@@ -267,10 +312,20 @@ packaging/
 Formula/           Homebrew formula (this repo is also a tap)
 charts/            Helm chart
 deploy/kubernetes/ plain Kubernetes manifests (kustomize)
+scripts/demo/       demo data (npm run demo) and the README screenshots (npm run screenshots)
 docs/
+  releasing.md          how releases are cut and the one-time setup they need
   recovered-schema.md   notes on the original project this was rebuilt from
 ```
 
+## Contributing
+
+Contributions are welcome, from typo fixes to new features. Start with
+[CONTRIBUTING.md](CONTRIBUTING.md), look for issues labeled
+[`good first issue`](https://github.com/yeixio/northern-lights/labels/good%20first%20issue),
+and please follow the [code of conduct](CODE_OF_CONDUCT.md). Found a security
+problem? Report it privately as described in [SECURITY.md](SECURITY.md).
+
 ## License
 
-MIT
+[MIT](LICENSE)

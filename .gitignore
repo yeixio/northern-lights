@@ -10,3 +10,4 @@ supabase/.branches
 *.tsbuildinfo
 data
 dist-packages
+demo-data

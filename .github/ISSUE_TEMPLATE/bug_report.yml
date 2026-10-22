@@ -1,0 +1,57 @@
+name: Bug report
+description: Something doesn't work the way it should
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this! Please don't include passwords, invite links or other private details.
+        For security problems, use [private reporting](https://github.com/yeixio/northern-lights/security/advisories/new) instead.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+      placeholder: |
+        1. Signed in as a member
+        2. Opened an album and clicked Add photos
+        3. Expected the photos to upload, but got "Something went wrong"
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How do you run Northern Lights?
+      options:
+        - Docker
+        - apt package (Debian, Ubuntu, Raspberry Pi OS)
+        - dnf / yum package (Fedora, RHEL, Rocky, Alma)
+        - Homebrew
+        - Kubernetes (Helm or manifests)
+        - From source
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The release (e.g. 0.1.0), Docker tag, or commit.
+  - type: dropdown
+    id: database
+    attributes:
+      label: Database
+      options:
+        - SQLite (the default)
+        - Postgres
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and device, if it's a display problem
+      placeholder: Safari on iPhone, Firefox on Windows...
+  - type: textarea
+    id: logs
+    attributes:
+      label: Server log or screenshots
+      description: "Docker: `docker compose logs app`. Linux packages: `journalctl -u northern-lights`."
+      render: text

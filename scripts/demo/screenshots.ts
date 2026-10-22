@@ -47,7 +47,11 @@ async function settle(page: Page) {
   // Not "networkidle": the members' area keeps a live-updates connection open.
   await page.waitForLoadState("load");
   await page.waitForTimeout(800);
-  await page.evaluate(() => Promise.all([...document.images].map((img) => img.complete || img.decode().catch(() => undefined))));
+  // Lazy images below the fold never load, so don't wait on any image for long.
+  await page.evaluate(() => Promise.all([...document.images].map((img) => img.complete || Promise.race([
+    img.decode().catch(() => undefined),
+    new Promise((r) => setTimeout(r, 3000)),
+  ]))));
   await page.waitForTimeout(300);
 }
 
@@ -57,15 +61,15 @@ async function shot(page: Page, name: string, opts: { fullPage?: boolean } = {})
   console.log(`  docs/screenshots/${name}.png`);
 }
 
-async function session(browser: Browser, email: string | null, opts: { mobile?: boolean; dark?: boolean } = {}) {
+async function session(browser: Browser, email: string | null, opts: { mobile?: boolean; dark?: boolean; guide?: boolean } = {}) {
   const context = await browser.newContext({
     viewport: opts.mobile ? { width: 390, height: 844 } : { width: 1280, height: 800 },
     deviceScaleFactor: opts.mobile ? 2 : 1,
     colorScheme: opts.dark ? "dark" : "light",
     baseURL: BASE,
   });
-  // Keep the admin's getting-started card out of the way.
-  await context.addInitScript(() => localStorage.setItem("nl-getting-started-dismissed", "1"));
+  // Keep the admin's getting-started card out of the way unless it's the subject.
+  if (!opts.guide) await context.addInitScript(() => localStorage.setItem("nl-getting-started-dismissed", "1"));
   const page = await context.newPage();
   if (email) {
     const res = await page.request.post("/api/auth/login", { data: { email, password: PASSWORD } });
@@ -107,6 +111,27 @@ try {
   await shot(astrid, "home-editing");
   await astrid.getByRole("button", { name: "Theme" }).click();
   await shot(astrid, "theme-panel");
+
+  // What a brand-new site shows its admin: the starter page and the getting-started guide.
+  const fresh = await session(browser, "astrid@example.com", { guide: true });
+  const { home } = await (await fresh.request.get("/api/public/site")).json();
+  await fresh.request.delete("/api/admin/home");
+  await fresh.goto("/");
+  await shot(fresh, "home-fresh");
+  await fresh.request.put("/api/admin/home", { data: home });
+
+  // The admin's Site settings page: name, logo and footer with a live preview, then email.
+  await astrid.goto("/app/admin");
+  await shot(astrid, "admin");
+  await astrid.goto("/app/admin/site");
+  await settle(astrid);
+  await astrid.getByLabel("Footer note").fill("Made with love (and too much coffee) in Tromsø. Skål!");
+  await astrid.evaluate(() => window.scrollTo(0, 0));
+  await shot(astrid, "site-settings");
+  await astrid.getByRole("heading", { name: "Email" }).scrollIntoViewIfNeeded();
+  await astrid.getByLabel("Email address").fill("astrid.halvorsen@example.com");
+  await astrid.getByLabel("Password").fill("abcd efgh ijkl mnop");
+  await shot(astrid, "site-settings-email");
 
   // A member who picked their own palette and dark mode.
   const nils = await session(browser, "nils@example.com");

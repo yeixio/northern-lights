@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, errorText } from "../../lib/api";
 import { useAuth } from "../../auth/AuthProvider";
 import Spinner from "../../components/Spinner";
+import SiteLogo from "../../components/SiteLogo";
 
 /**
  * Three account forms that share a layout:
@@ -70,7 +71,7 @@ export default function SetPassword({ mode }: { mode: "setup" | "welcome" | "res
   return (
     <div className="bg-gradient-to-b from-primary-50 to-ink-50 px-4 py-16 sm:py-24">
       <div className="mx-auto max-w-sm">
-      <img src="/favicon.svg" alt="" className="mx-auto mb-6 h-12 w-12 drop-shadow-lg" />
+      <SiteLogo className="mx-auto mb-6 h-12 w-12 drop-shadow-lg" />
       <form onSubmit={submit} className="card space-y-4 p-7 shadow-xl">
         <div>
           <h1 className="text-xl font-semibold">{title}</h1>

@@ -3,12 +3,21 @@ import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
 import { homeSchema, themeSchema } from "../appearance.js";
 import { newToken, requireAdmin, resetExpiry, type AppEnv } from "../auth.js";
-import { now } from "../db/index.js";
+import { now, type DB } from "../db/index.js";
 import { publish } from "../events.js";
+import { fromAddress, mailSettingsSchema, mailSource, sendMail, siteMailSettings, transportFor } from "../mail.js";
 import { profile } from "../serialize.js";
 import { appUrl } from "../url.js";
 
 const text = (max: number) => z.string().trim().max(max).nullable().optional();
+const fileUrl = z.string().regex(/^\/files\/[\w.-]+$/);
+
+/** Checks mail settings from the form. An empty password keeps the saved one. */
+async function withSavedPassword(db: DB, input: unknown) {
+  const settings = mailSettingsSchema.parse(input);
+  if (!settings.pass) settings.pass = (await siteMailSettings(db)).settings?.pass ?? "";
+  return settings;
+}
 
 export const adminRoutes = new Hono<AppEnv>()
   .use(async (c, next) => {
@@ -16,23 +25,74 @@ export const adminRoutes = new Hono<AppEnv>()
     await next();
   })
 
+  // Only the fields sent are changed.
   .put("/site", async (c) => {
     const body = z.object({
-      site_name: z.string().trim().min(1).max(200),
+      site_name: z.string().trim().min(1, "The site needs a name").max(200).optional(),
       tagline: text(500),
       about: text(20_000),
-      hero_image_url: z.string().regex(/^\/files\/[\w.-]+$/).nullable().optional(),
+      hero_image_url: fileUrl.nullable().optional(),
+      logo_url: fileUrl.nullable().optional(),
       contact_email: text(320),
+      footer_text: text(500),
+      show_credit: z.boolean().optional(),
     }).parse(await c.req.json());
-    await c.get("db").updateTable("site_settings").set({
-      site_name: body.site_name,
-      tagline: body.tagline || null,
-      about: body.about || null,
-      hero_image_url: body.hero_image_url ?? null,
-      contact_email: body.contact_email || null,
-      updated_at: now(),
-    }).where("id", "=", 1).execute();
+    const { show_credit, ...fields } = body;
+    const set: Record<string, string | number | null> = { updated_at: now() };
+    for (const [key, value] of Object.entries(fields)) if (value !== undefined) set[key] = value || null;
+    if (show_credit !== undefined) set.show_credit = show_credit ? 1 : 0;
+    await c.get("db").updateTable("site_settings").set(set).where("id", "=", 1).execute();
     return c.json({ ok: true });
+  })
+
+  // Email settings. The password is never sent back, only whether one is saved.
+  .get("/mail", async (c) => {
+    const source = await mailSource(c.get("db"));
+    const { settings } = await siteMailSettings(c.get("db"));
+    const { pass, ...rest } = settings ?? { pass: "" };
+    return c.json({ source, settings: settings ? rest : null, has_password: Boolean(pass) });
+  })
+
+  .put("/mail", async (c) => {
+    const db = c.get("db");
+    const settings = await withSavedPassword(db, await c.req.json());
+    await db.updateTable("site_settings").set({ mail: JSON.stringify(settings), updated_at: now() })
+      .where("id", "=", 1).execute();
+    return c.json({ ok: true });
+  })
+
+  .delete("/mail", async (c) => {
+    await c.get("db").updateTable("site_settings").set({ mail: null, updated_at: now() }).where("id", "=", 1).execute();
+    return c.json({ ok: true });
+  })
+
+  // Sends a test email to the admin with the settings in the form (saved or
+  // not), so they can check them before saving. With SMTP_URL set, tests that.
+  .post("/mail/test", async (c) => {
+    const admin = requireAdmin(c);
+    const db = c.get("db");
+    const { siteName } = await siteMailSettings(db);
+    const body = await c.req.json().catch(() => null);
+    let sent: Promise<unknown>;
+    const message = {
+      to: admin.email,
+      subject: `Test email from ${siteName}`,
+      text: `It works! ${siteName} can send email, so invitations and password resets will now be emailed.\n`,
+    };
+    if (await mailSource(db) === "env") {
+      sent = sendMail(db, message.to, message.subject, message.text).then((ok) => {
+        if (!ok) throw new Error("Sending failed. Check SMTP_URL and the server log.");
+      });
+    } else {
+      const settings = await withSavedPassword(db, body);
+      sent = transportFor(settings).sendMail({ ...message, from: fromAddress(settings, siteName) });
+    }
+    try {
+      await sent;
+    } catch (err) {
+      throw new HTTPException(502, { message: `The test email couldn't be sent: ${err instanceof Error ? err.message : err}` });
+    }
+    return c.json({ ok: true, to: admin.email });
   })
 
   .put("/theme", async (c) => {

@@ -55,6 +55,10 @@ export interface SiteSettingsTable {
   contact_email: string | null;
   theme: string | null; // JSON, see server/appearance.ts
   home: string | null; // JSON home page sections
+  logo_url: string | null;
+  footer_text: string | null;
+  show_credit: number;
+  mail: string | null; // JSON, see mailSettingsSchema in server/mail.ts
   updated_at: string;
 }
 

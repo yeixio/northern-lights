@@ -21,7 +21,7 @@ export const authRoutes = new Hono<AppEnv>()
     const user = c.get("user");
     const anyUser = await db.selectFrom("users").select("id").limit(1).executeTakeFirst();
     const me = user ? { ...profile(user), preferences: parseJson(user.preferences) } : null;
-    return c.json({ user: me, needsSetup: !anyUser, mailEnabled: mailEnabled() });
+    return c.json({ user: me, needsSetup: !anyUser, mailEnabled: await mailEnabled(db) });
   })
 
   // First-run: create the admin account. Only works while there are no users.
@@ -81,14 +81,15 @@ export const authRoutes = new Hono<AppEnv>()
     const body = z.object({ email }).parse(await c.req.json());
     rateLimit(`forgot:${body.email}`, 5);
     const user = await db.selectFrom("users").select(["id", "is_active"]).where("email", "=", body.email).executeTakeFirst();
-    if (user?.is_active && mailEnabled()) {
+    const mailOn = await mailEnabled(db);
+    if (user?.is_active && mailOn) {
       const { token, hash } = newToken();
       await db.insertInto("password_resets")
         .values({ token_hash: hash, user_id: user.id, expires_at: resetExpiry(), created_at: now() }).execute();
-      await sendMail(body.email, "Reset your password",
+      await sendMail(db, body.email, "Reset your password",
         `Someone asked to reset your password. If it was you, open this link within 2 hours:\n\n${appUrl(c)}/reset-password?token=${token}\n`);
     }
-    return c.json({ ok: true, mailEnabled: mailEnabled() });
+    return c.json({ ok: true, mailEnabled: mailOn });
   })
 
   .post("/password/reset", async (c) => {

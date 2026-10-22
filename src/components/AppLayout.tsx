@@ -2,6 +2,7 @@ import { NavLink, Outlet, Link } from "react-router-dom";
 import { Globe, Home, Images, LogOut, Mail, Moon, Palette, ShieldCheck, Sun, UserPlus, Users } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider";
 import { useSite } from "../lib/site";
+import SiteLogo from "./SiteLogo";
 import { displayName } from "../lib/types";
 import Avatar from "./Avatar";
 
@@ -46,7 +47,7 @@ export default function AppLayout() {
       {/* Sidebar (desktop) */}
       <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-ink-200 bg-surface md:flex">
         <Link to="/app" className="flex h-16 items-center gap-2.5 px-5 font-semibold tracking-tight">
-          <img src="/favicon.svg" alt="" className="h-8 w-8" />
+          <SiteLogo />
           <span className="truncate">{name}</span>
         </Link>
         <nav className="flex-1 space-y-1 px-3 py-4">
@@ -76,7 +77,7 @@ export default function AppLayout() {
       {/* Top bar (mobile) */}
       <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-ink-200 bg-surface/85 px-4 backdrop-blur-xl md:hidden">
         <Link to="/app" className="flex min-w-0 items-center gap-2 font-semibold">
-          <img src="/favicon.svg" alt="" className="h-7 w-7" /> <span className="truncate">{name}</span>
+          <SiteLogo className="h-7 w-7" /> <span className="truncate">{name}</span>
         </Link>
         <div className="flex items-center gap-1">
           <Link to="/" className={iconBtn} aria-label="Public page"><Globe size={18} /></Link>

@@ -171,10 +171,13 @@ async function seedDemo() {
   // ---- site and home page ------------------------------------------------------
   const hero = await picture(SCENES.aurora, ids.astrid, [1600, 900]);
   const about = await picture(SCENES.fjord, ids.astrid);
+  const logo = await picture(SCENES.aurora, ids.astrid, [256, 256]);
   await db.updateTable("site_settings").set({
     site_name: "The Halvorsens",
     tagline: "Photos, news and stories from up north, shared with the people we love.",
+    logo_url: logo,
     contact_email: "hello@example.com",
+    footer_text: "Made with love (and too much coffee) in Tromsø.",
     theme: JSON.stringify({ preset: "aurora", mode: "light", font: "sans", radius: "default" }),
     home: JSON.stringify({
       sections: [

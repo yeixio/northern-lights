@@ -81,3 +81,24 @@ export function Modal({ title, onClose, children, wide = false }: { title: strin
     </div>
   );
 }
+
+/** An on/off switch with a label and an optional hint. */
+export function Toggle({ checked, onChange, label, hint }: { checked: boolean; onChange: (v: boolean) => void; label: string; hint?: string }) {
+  return (
+    <label className="flex cursor-pointer items-start justify-between gap-4">
+      <span>
+        <span className="block text-sm font-medium text-ink-800">{label}</span>
+        {hint && <span className="block text-xs text-ink-500">{hint}</span>}
+      </span>
+      <input type="checkbox" role="switch" className="peer sr-only" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+      <span
+        aria-hidden
+        className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition peer-focus-visible:ring-2 peer-focus-visible:ring-primary-500 peer-focus-visible:ring-offset-2 ${
+          checked ? "bg-primary-600" : "bg-ink-300"
+        }`}
+      >
+        <span className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition ${checked ? "translate-x-5" : ""}`} />
+      </span>
+    </label>
+  );
+}

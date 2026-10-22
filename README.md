@@ -51,8 +51,11 @@ made up, and the photos are painted in code. Run it yourself with
   typefaces and corner styles. Members can pick their own palette and light or
   dark mode for the private area.
 - Invite-only accounts: members create invite links; there is no public sign-up
+- Site settings for everything else an admin might want to change: name, logo,
+  link-preview text, footer, and email, with a live preview. No config files.
 - Works without email: invite and password-reset links are shown on screen to
-  pass along yourself. Add SMTP settings and they're emailed too.
+  pass along yourself. Connect an email account in Site settings (or set
+  `SMTP_URL`) and they're emailed too.
 - Feed with text, photos and video, likes, and comments, updated live
 - Choose per post or per album whether it also appears on the public page
 - Profiles with avatar and bio
@@ -231,8 +234,8 @@ All settings are environment variables (or lines in `.env`). Everything is optio
 | `DATA_DIR` | `./data` | Where the SQLite file and uploads go |
 | `DATABASE_URL` | `sqlite:$DATA_DIR/northern-lights.db` | `sqlite:/path/to/file.db` or `postgres://user:pass@host:5432/db` |
 | `APP_URL` | the request's address | Public URL, used in invite/reset links. An `https://` URL also makes the login cookie Secure. |
-| `SMTP_URL` | off | e.g. `smtps://user:pass@smtp.example.com:465`. Turns on invite and reset emails. |
-| `MAIL_FROM` | `Northern Lights <no-reply@localhost>` | Sender for those emails |
+| `SMTP_URL` | off | e.g. `smtps://user:pass@smtp.example.com:465`. Turns on invite and reset emails. Admins can also set up email in **Site settings** instead; this wins when both are set. |
+| `MAIL_FROM` | `Northern Lights <no-reply@localhost>` | Sender for emails sent with `SMTP_URL` |
 | `STORAGE` | `local` | `local` or `s3` |
 | `MAX_UPLOAD_MB` | `50` | Largest photo or video allowed |
 | `S3_BUCKET`, `S3_REGION`, `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_FORCE_PATH_STYLE` | | For `STORAGE=s3`. Works with AWS, Backblaze B2, Cloudflare R2, MinIO and others. |
@@ -263,19 +266,38 @@ family.example.com {
 
 ## Customizing the site
 
-Sign in as an admin and open the home page: an **Edit page** button appears in
-the corner (the Admin screen links there too). While editing, click any text to
-change it, use the toolbar on each section to move, hide, duplicate or delete
-it, and the **+ Add section** buttons to add new ones. **Theme** opens the
-palette, colors, light/dark, type and corner settings with a live preview.
-Nothing changes for visitors until you press **Save changes**.
+Everything about how your site looks and what it says is changed from the site
+itself, with no files to edit. Sign in as the admin account and open **Admin**.
+A brand-new site also shows a getting-started guide on the home page that
+walks through the same steps.
 
-Each member can choose their own colors and light or dark mode under
+![The Admin screen with Edit home page, Theme and Site settings](docs/screenshots/admin.png)
+
+- **Site settings**: your site's name, a logo (shown in the header, on the
+  sign-in page and in the browser tab), a one-line description for link
+  previews when you share your site in a chat app, a footer note and contact
+  email, and whether to show "Powered by Northern Lights". A preview next to the
+  form shows each change as you type, and nothing changes for visitors until
+  you press **Save changes**.
+- **Email**: on the same page, pick Gmail, iCloud Mail, Fastmail or another
+  provider, enter the address and an app password, and press **Send a test
+  email** to check it. From then on invitations and password resets are
+  emailed. Without it, those links are shown on screen for you to pass along.
+- **Edit home page**: click any text on the home page to change it, use the
+  toolbar on each section to move, hide, duplicate or delete it, and the
+  **+ Add section** buttons to add new ones.
+- **Theme**: the palette, your own colors, light or dark, the typeface and
+  corner style, with a live preview.
+
+Each member can also choose their own colors and light or dark mode under
 **Appearance** in the members' area. That only changes what they see.
 
-| | |
+| Name, logo, footer and link preview | Email, with a test button |
 | --- | --- |
-| ![A fresh site](docs/screenshots/home-fresh.png) | ![Editing the home page](docs/screenshots/home-editing.png) |
+| ![Site settings with a live preview of the header, footer and a shared link](docs/screenshots/site-settings.png) | ![Setting up Gmail for invitations](docs/screenshots/site-settings-email.png) |
+| **The getting-started guide on a new site** | **Editing the home page** |
+| ![A fresh site with the getting-started guide](docs/screenshots/home-fresh.png) | ![Editing the home page](docs/screenshots/home-editing.png) |
+| **Theme settings** | **A member's own colors** |
 | ![Theme settings](docs/screenshots/theme-panel.png) | ![A member's appearance settings in dark mode](docs/screenshots/member-appearance-dark.png) |
 
 ## How access works
@@ -296,6 +318,7 @@ server/
   app.ts           routes, error handling, serving the built front end
   db/              Kysely schema and migrations (SQLite + Postgres)
   appearance.ts    what may be saved as a theme, home page or member preference
+  mail.ts          sending email, set up by SMTP_URL or in Site settings
   routes/          auth, public, posts, messages, albums, files, invites, admin, live updates
   app.test.ts      end-to-end API tests
 src/
@@ -305,7 +328,7 @@ src/
   lib/theme.ts     palettes and how site and member colors combine
   lib/home.ts      home page section types and the starter page
   pages/public/    public page, gallery, login, setup, invite and reset pages
-  pages/app/       feed, people, profiles, messages, albums, invite, appearance, admin
+  pages/app/       feed, people, profiles, messages, albums, invite, appearance, admin, site settings
 packaging/
   linux/           .deb/.rpm packaging (nfpm), systemd service, config file
   repos/           builds the signed apt and dnf repositories

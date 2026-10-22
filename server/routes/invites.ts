@@ -39,6 +39,7 @@ export const inviteRoutes = new Hono<AppEnv>()
     const site = await db.selectFrom("site_settings").select("site_name").executeTakeFirst();
     const siteName = site?.site_name ?? "Northern Lights";
     const emailed = await sendMail(
+      db,
       body.email,
       `${displayName(user)} invited you to ${siteName}`,
       [

@@ -25,6 +25,12 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+      - name: Type-check the demo scripts
+        run: npx tsc -p scripts/tsconfig.json
+      - name: Seed the demo data
+        run: npm run demo:seed
+        env:
+          DATA_DIR: ${{ runner.temp }}/demo-data
       - name: Test (SQLite)
         run: npm test
       - name: Test (Postgres)

@@ -11,3 +11,6 @@ supabase/.branches
 data
 dist-packages
 demo-data
+
+# rclone.conf for docker-compose.cloud.yml holds cloud account tokens
+/rclone/

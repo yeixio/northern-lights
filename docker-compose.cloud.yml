@@ -1,0 +1,48 @@
+# Optional: keep photos and videos in Google Drive, Dropbox, OneDrive or any
+# other cloud storage rclone supports, instead of on this machine's disk.
+#
+# rclone (https://rclone.org) runs next to the app and makes your cloud storage
+# look like an S3 bucket, which Northern Lights already knows how to use.
+# Full guide: docs/cloud-storage.md. In short:
+#
+# 1. On a computer with a web browser, install rclone and run `rclone config`
+#    to connect a remote named `cloud`. Then run `rclone mkdir cloud:northern-lights`.
+# 2. Copy the rclone.conf it made (`rclone config file` shows where) into a
+#    folder named `rclone` next to this file.
+# 3. Run:
+#      docker compose -f docker-compose.yml -f docker-compose.cloud.yml up -d
+services:
+  app:
+    depends_on: [rclone]
+    environment:
+      STORAGE: s3
+      S3_ENDPOINT: http://rclone:8080
+      S3_BUCKET: ${CLOUD_FOLDER:-northern-lights}
+      S3_FORCE_PATH_STYLE: "true"
+      # Only used between the two containers; the rclone port is never published.
+      S3_ACCESS_KEY_ID: northern-lights
+      S3_SECRET_ACCESS_KEY: northern-lights-internal
+
+  rclone:
+    image: rclone/rclone:1.71
+    restart: unless-stopped
+    command:
+      - serve
+      - s3
+      - "cloud:"
+      - --addr=:8080
+      - --auth-key=northern-lights,northern-lights-internal
+      # Keep a copy of recent photos on disk so pages load quickly and stay
+      # under the cloud provider's rate limits. Upload new files straight away.
+      - --vfs-cache-mode=full
+      - --vfs-write-back=0s
+      - --vfs-cache-max-age=720h
+      - --vfs-cache-max-size=${CLOUD_CACHE_SIZE:-5G}
+      - --cache-dir=/cache
+    volumes:
+      # Writable: rclone saves refreshed sign-in tokens back to rclone.conf.
+      - ./rclone:/config/rclone
+      - rclone-cache:/cache
+
+volumes:
+  rclone-cache:

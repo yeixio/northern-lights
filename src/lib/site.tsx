@@ -45,6 +45,13 @@ export function SiteProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (settings?.site_name) document.title = settings.site_name;
   }, [settings?.site_name]);
+  useEffect(() => {
+    const icon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+    if (!icon) return;
+    icon.href = settings?.logo_url ?? "/favicon.svg";
+    if (settings?.logo_url) icon.removeAttribute("type");
+    else icon.type = "image/svg+xml";
+  }, [settings?.logo_url]);
 
   const theme = preview ?? normalizeTheme(settings?.theme);
 

@@ -22,7 +22,11 @@ export interface SiteSettings {
   tagline: string | null;
   about: string | null;
   hero_image_url: string | null;
+  logo_url: string | null;
   contact_email: string | null;
+  footer_text: string | null;
+  /** Show "Powered by Northern Lights" in the public footer. */
+  show_credit: boolean;
   theme: SiteTheme | null;
   home: HomePage | null;
 }

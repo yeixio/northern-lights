@@ -8,9 +8,9 @@ import { album, bool } from "../serialize.js";
 export const publicRoutes = new Hono<AppEnv>()
   .get("/site", async (c) => {
     const s = await c.get("db").selectFrom("site_settings")
-      .select(["site_name", "tagline", "about", "hero_image_url", "contact_email", "theme", "home"])
+      .select(["site_name", "tagline", "about", "hero_image_url", "logo_url", "contact_email", "footer_text", "show_credit", "theme", "home"])
       .executeTakeFirstOrThrow();
-    return c.json({ ...s, theme: parseJson(s.theme), home: parseJson(s.home) });
+    return c.json({ ...s, show_credit: bool(s.show_credit), theme: parseJson(s.theme), home: parseJson(s.home) });
   })
 
   .get("/albums", async (c) => {

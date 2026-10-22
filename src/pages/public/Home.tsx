@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Images, LayoutTemplate, Palette, PenLine, Plus, RotateCcw, Sparkles, UserPlus, X } from "lucide-react";
+import { Images, LayoutTemplate, Palette, PenLine, Plus, RotateCcw, Settings2, Sparkles, UserPlus, X } from "lucide-react";
 import { api, errorText } from "../../lib/api";
 import { useAuth } from "../../auth/AuthProvider";
 import { useSite } from "../../lib/site";
@@ -240,6 +240,7 @@ function GettingStarted({ onEdit }: { onEdit: (openTheme?: boolean) => void }) {
     }
   };
   const steps = [
+    { icon: Settings2, title: "Name it and add a logo", body: "Your site's name, logo, footer, and email for invitations.", action: <Link className="btn-secondary py-1.5" to="/app/admin/site">Site settings</Link> },
     { icon: LayoutTemplate, title: "Make the home page yours", body: "Change the words, add photos, and arrange sections.", action: <button className="btn-primary py-1.5" onClick={() => onEdit()}>Edit page</button> },
     { icon: Palette, title: "Pick your colors", body: "Choose a palette, light or dark, and a typeface.", action: <button className="btn-secondary py-1.5" onClick={() => onEdit(true)}>Choose theme</button> },
     { icon: Images, title: "Share some photos", body: "Albums you make public appear here and in the gallery.", action: <Link className="btn-secondary py-1.5" to="/app/albums">Albums</Link> },
@@ -252,7 +253,7 @@ function GettingStarted({ onEdit }: { onEdit: (openTheme?: boolean) => void }) {
         <p className="text-sm font-semibold tracking-wider text-primary-600 uppercase">Getting started</p>
         <h2 className="mt-1 text-2xl font-semibold tracking-tight">Welcome! Here's how to set up your site.</h2>
         <p className="mt-1 text-ink-500">This is the starter page your visitors see. Only admins see this box.</p>
-        <ol className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <ol className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {steps.map(({ icon: Icon, title, body, action }, i) => (
             <li key={title} className="flex flex-col rounded-xl border border-ink-200 bg-ink-50 p-4">
               <div className="flex items-center gap-2 text-sm text-ink-500">

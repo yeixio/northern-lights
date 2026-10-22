@@ -174,6 +174,19 @@ const migrations: Record<string, Migration> = {
       await db.schema.alterTable("users").addColumn("preferences", "text").execute();
     },
   },
+
+  "2026_10_22_004_site_identity": {
+    async up(db: Kysely<any>) {
+      // Settings an admin changes on the Site settings page: a logo, footer
+      // text, whether to show the "Powered by" link, and email (SMTP) settings
+      // as JSON for sites that don't set SMTP_URL.
+      await db.schema.alterTable("site_settings").addColumn("logo_url", "text").execute();
+      await db.schema.alterTable("site_settings").addColumn("footer_text", "text").execute();
+      await db.schema.alterTable("site_settings")
+        .addColumn("show_credit", "integer", (c) => c.notNull().defaultTo(1)).execute();
+      await db.schema.alterTable("site_settings").addColumn("mail", "text").execute();
+    },
+  },
 };
 
 export const migrationProvider: MigrationProvider = {

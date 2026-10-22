@@ -11,7 +11,7 @@ process.env.UPLOADS_DIR = path.join(tmp, "uploads");
 
 const { openDatabase } = await import("./db/index.js");
 const { createStorage } = await import("./storage.js");
-const { createApp } = await import("./app.js");
+const { createApp, withSiteMeta } = await import("./app.js");
 // The Facebook importer runs in the browser; these tests drive it against the API.
 const { buildPlan } = await import("../src/lib/facebook.js");
 const { runImport } = await import("../src/lib/importer.js");
@@ -46,6 +46,48 @@ function client() {
     put: (u: string, b?: unknown) => call("PUT", u, b),
     del: (u: string) => call("DELETE", u),
   };
+}
+
+/** Just enough of an SMTP server to receive mail from nodemailer. */
+async function fakeSmtp() {
+  const net = await import("node:net");
+  const messages: { to: string; auth: string; data: string }[] = [];
+  const server = net.createServer((socket) => {
+    let to = "", auth = "", data = "", inData = false, buffer = "";
+    const say = (line: string) => socket.write(`${line}\r\n`);
+    say("220 fake ESMTP");
+    socket.on("data", (chunk) => {
+      buffer += chunk.toString();
+      let i;
+      while ((i = buffer.indexOf("\r\n")) >= 0) {
+        const line = buffer.slice(0, i);
+        buffer = buffer.slice(i + 2);
+        if (inData) {
+          if (line === ".") {
+            inData = false;
+            messages.push({ to, auth, data });
+            say("250 queued");
+          } else data += `${line}\n`;
+        } else if (/^(EHLO|HELO)/i.test(line)) say("250-fake\r\n250 AUTH PLAIN LOGIN");
+        else if (/^AUTH PLAIN /i.test(line)) {
+          auth = Buffer.from(line.slice(11), "base64").toString().split("\0").slice(1).join(":");
+          say("235 ok");
+        } else if (/^RCPT TO:<(.+)>/i.test(line)) {
+          to = /<(.+)>/.exec(line)![1];
+          say("250 ok");
+        } else if (/^DATA/i.test(line)) {
+          inData = true;
+          data = "";
+          say("354 go");
+        } else if (/^QUIT/i.test(line)) {
+          say("221 bye");
+          socket.end();
+        } else say("250 ok");
+      }
+    });
+  });
+  await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
+  return { port: (server.address() as { port: number }).port, messages, close: () => server.close() };
 }
 
 const admin = client();
@@ -240,6 +282,82 @@ describe("admin", () => {
     assert.equal((await admin.del("/api/admin/home")).status, 200);
     assert.equal((await anon.get("/api/public/site")).data.home, null);
     assert.equal((await anon.get(url)).status, 404);
+  });
+
+  test("admins set a logo, footer note and credit link; the logo becomes public", async () => {
+    const form = new FormData();
+    form.append("file", new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "logo.png", { type: "image/png" }));
+    const logo = (await admin.post("/api/uploads", form)).data[0].url as string;
+    assert.equal((await anon.get(logo)).status, 404);
+
+    assert.equal((await friend.put("/api/admin/site", { logo_url: logo })).status, 403);
+    assert.equal((await admin.put("/api/admin/site", { logo_url: "https://evil.example/x.png" })).status, 400);
+    assert.equal((await admin.put("/api/admin/site", { site_name: "  " })).status, 400);
+    assert.equal((await admin.put("/api/admin/site", { logo_url: logo, footer_text: "Made up north", show_credit: false })).status, 200);
+    const site = (await anon.get("/api/public/site")).data;
+    assert.equal(site.logo_url, logo);
+    assert.equal(site.footer_text, "Made up north");
+    assert.equal(site.show_credit, false);
+    // Fields that weren't sent stay as they were.
+    assert.equal(site.site_name, "The Smiths");
+    assert.equal(site.tagline, "Hi");
+    assert.equal((await anon.get(logo)).status, 200);
+
+    await admin.put("/api/admin/site", { logo_url: null, footer_text: "", show_credit: true });
+    assert.equal((await anon.get(logo)).status, 404);
+    assert.equal((await anon.get("/api/public/site")).data.footer_text, null);
+  });
+
+  test("pages carry the site's name, description and logo for link previews", () => {
+    const html = '<head><link rel="icon" type="image/svg+xml" href="/favicon.svg" /><title>Northern Lights</title></head>';
+    const out = withSiteMeta(html, { site_name: 'Tom & "Jo"', tagline: "<b>Hi</b>", logo_url: "/files/a.png" }, "https://fam.example");
+    assert.match(out, /<title>Tom &#38; &#34;Jo&#34;<\/title>/);
+    assert.match(out, /<meta property="og:description" content="&#60;b&#62;Hi&#60;\/b&#62;" \/>/);
+    assert.match(out, /<meta property="og:image" content="https:\/\/fam.example\/files\/a.png" \/>/);
+    assert.match(out, /<link rel="icon" href="\/files\/a.png" \/>/);
+    assert.doesNotMatch(out, /Northern Lights/);
+  });
+
+  test("admins set up email in the app, test it, and invitations are emailed", async () => {
+    const smtp = await fakeSmtp();
+    try {
+      const mail = { host: "127.0.0.1", port: smtp.port, security: "none", user: "me@example.com", pass: "app-pass", from_name: "", from_email: "me@example.com" };
+      assert.equal((await friend.get("/api/admin/mail")).status, 403);
+      assert.deepEqual((await admin.get("/api/admin/mail")).data, { source: "off", settings: null, has_password: false });
+
+      // Testing before saving uses the form's settings.
+      const test = await admin.post("/api/admin/mail/test", mail);
+      assert.equal(test.status, 200, JSON.stringify(test.data));
+      assert.equal(smtp.messages.at(-1)?.to, "admin@example.com");
+      assert.equal(smtp.messages.at(-1)?.auth, "me@example.com:app-pass");
+      assert.match(smtp.messages.at(-1)!.data, /Subject: Test email from The Smiths/);
+
+      assert.equal((await admin.put("/api/admin/mail", { ...mail, from_email: "nope" })).status, 400);
+      assert.equal((await admin.put("/api/admin/mail", mail)).status, 200);
+      const saved = (await admin.get("/api/admin/mail")).data;
+      assert.equal(saved.source, "site");
+      assert.equal(saved.has_password, true);
+      assert.equal(saved.settings.pass, undefined);
+      assert.equal((await anon.get("/api/auth/session")).data.mailEnabled, true);
+
+      // Saving again with an empty password keeps the saved one.
+      assert.equal((await admin.put("/api/admin/mail", { ...mail, pass: "", from_name: "The Smiths family" })).status, 200);
+      const inv = await admin.post("/api/invitations", { email: "cousin@example.com" });
+      assert.equal(inv.data.emailed, true);
+      assert.equal(smtp.messages.at(-1)?.to, "cousin@example.com");
+      assert.equal(smtp.messages.at(-1)?.auth, "me@example.com:app-pass");
+      assert.match(smtp.messages.at(-1)!.data, /From: The Smiths family <me@example.com>/);
+
+      // A wrong server gives the admin a readable error instead of hanging.
+      const bad = await admin.post("/api/admin/mail/test", { ...mail, port: 1 });
+      assert.equal(bad.status, 502);
+      assert.match(bad.data.error, /couldn't be sent/);
+
+      assert.equal((await admin.del("/api/admin/mail")).status, 200);
+      assert.equal((await anon.get("/api/auth/session")).data.mailEnabled, false);
+    } finally {
+      smtp.close();
+    }
   });
 
   test("members choose their own colors", async () => {

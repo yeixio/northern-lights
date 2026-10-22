@@ -18,6 +18,7 @@ import ImportFacebook from "./pages/app/ImportFacebook";
 import Invite from "./pages/app/Invite";
 import Admin from "./pages/app/Admin";
 import Appearance from "./pages/app/Appearance";
+import SiteSettings from "./pages/app/SiteSettings";
 import { SiteProvider } from "./lib/site";
 
 export default function App() {
@@ -49,6 +50,7 @@ export default function App() {
                 <Route path="settings" element={<Appearance />} />
                 <Route element={<RequireAdmin />}>
                   <Route path="admin" element={<Admin />} />
+                  <Route path="admin/site" element={<SiteSettings />} />
                 </Route>
               </Route>
             </Route>

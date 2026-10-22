@@ -16,7 +16,8 @@ A self-hosted personal social site. It has two halves:
 
 It runs as a single Node.js server with **SQLite** (zero setup, ideal for a home
 server or Raspberry Pi) or **Postgres** (for larger or managed hosting). Photos
-are stored on disk or in any S3-compatible bucket. Install it with
+are stored on disk, in any S3-compatible bucket, or in
+[Google Drive, Dropbox or OneDrive](docs/cloud-storage.md). Install it with
 [Docker](#docker-recommended), [apt](#debian-and-ubuntu-apt),
 [dnf/yum](#fedora-rhel-rocky-and-alma-linux-dnf--yum),
 [Homebrew](#macos-and-linux-with-homebrew) or [Helm](#kubernetes).
@@ -118,6 +119,14 @@ Point your domain at the machine, open ports 80 and 443, then:
 ```sh
 DOMAIN=family.example.com docker compose -f docker-compose.yml -f docker-compose.caddy.yml up -d
 ```
+
+#### Photos in Google Drive, Dropbox or OneDrive
+
+[`docker-compose.cloud.yml`](docker-compose.cloud.yml) adds
+[rclone](https://rclone.org), which keeps uploads in your cloud storage instead
+of on the server. Connect your account once from a computer with a browser,
+then start it with `-f docker-compose.cloud.yml`. See
+[docs/cloud-storage.md](docs/cloud-storage.md) for the steps.
 
 #### Postgres
 
@@ -238,7 +247,7 @@ All settings are environment variables (or lines in `.env`). Everything is optio
 | `MAIL_FROM` | `Northern Lights <no-reply@localhost>` | Sender for emails sent with `SMTP_URL` |
 | `STORAGE` | `local` | `local` or `s3` |
 | `MAX_UPLOAD_MB` | `50` | Largest photo or video allowed |
-| `S3_BUCKET`, `S3_REGION`, `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_FORCE_PATH_STYLE` | | For `STORAGE=s3`. Works with AWS, Backblaze B2, Cloudflare R2, MinIO and others. |
+| `S3_BUCKET`, `S3_REGION`, `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_FORCE_PATH_STYLE` | | For `STORAGE=s3`. Works with AWS, Backblaze B2, Cloudflare R2, MinIO and others, and with Google Drive, Dropbox or OneDrive through [rclone](docs/cloud-storage.md). |
 | `SESSION_DAYS` | `30` | How long a login lasts |
 | `INVITE_DAYS` | `14` | How long an invite link works |
 

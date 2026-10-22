@@ -83,7 +83,6 @@ try {
   const visitor = await session(browser, null);
   await visitor.goto("/");
   await shot(visitor, "demo-home");
-  await shot(visitor, "demo-home-full", { fullPage: true });
   await visitor.goto("/gallery");
   await visitor.getByText("Winter at the cabin").first().click();
   await shot(visitor, "demo-public-album");

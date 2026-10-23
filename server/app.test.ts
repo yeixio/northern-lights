@@ -12,6 +12,7 @@ process.env.UPLOADS_DIR = path.join(tmp, "uploads");
 const { openDatabase } = await import("./db/index.js");
 const { createStorage } = await import("./storage.js");
 const { createApp, withSiteMeta } = await import("./app.js");
+const { config } = await import("./config.js");
 // The Facebook importer runs in the browser; these tests drive it against the API.
 const { buildPlan } = await import("../src/lib/facebook.js");
 const { runImport } = await import("../src/lib/importer.js");
@@ -109,6 +110,20 @@ after(async () => {
 });
 
 describe("setup and invites", () => {
+  test("a hosted site can only be claimed with its setup link", async () => {
+    config.setupToken = "hosted-setup-token";
+    try {
+      assert.equal((await anon.get("/api/auth/session")).data.setupNeedsLink, true);
+      const claim = { email: "x@example.com", password: "password1", first_name: "X", last_name: "Y" };
+      assert.equal((await stranger.post("/api/auth/setup", claim)).status, 403);
+      assert.equal((await stranger.post("/api/auth/setup", { ...claim, setup_token: "guess" })).status, 403);
+      assert.equal((await anon.get("/api/auth/session")).data.needsSetup, true);
+    } finally {
+      config.setupToken = undefined;
+    }
+    assert.equal((await anon.get("/api/auth/session")).data.setupNeedsLink, false);
+  });
+
   test("first run asks for setup and creates the admin", async () => {
     assert.equal((await anon.get("/api/auth/session")).data.needsSetup, true);
     const r = await admin.post("/api/auth/setup", { email: "Admin@Example.com", password: "correct horse", first_name: "Ada", last_name: "Admin" });
@@ -622,5 +637,44 @@ describe("Facebook import", () => {
     const r = await other.post("/api/imports/albums", { key: "fb:album:x", title: "Mine now", items: [{ url: mine, type: "image" }] });
     assert.equal(r.status, 400);
     assert.deepEqual((await other.post("/api/imports/lookup", { keys: ["fb:file:1_n.jpg:5"] })).data.found, {});
+  });
+});
+
+describe("hosted sites", () => {
+  const jpeg = () => {
+    const form = new FormData();
+    form.append("file", new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0])], "q.jpg", { type: "image/jpeg" }));
+    return form;
+  };
+
+  test("uploads stop when the site's storage is full", async () => {
+    const used = Number((await db.selectFrom("files").select((eb) => eb.fn.sum<number>("size").as("t")).executeTakeFirst())?.t ?? 0);
+    config.storageQuotaBytes = used + 6;
+    try {
+      assert.equal((await admin.post("/api/uploads", jpeg())).status, 201);
+      const full = await admin.post("/api/uploads", jpeg());
+      assert.equal(full.status, 507);
+      assert.match(full.data.error, /storage is full/);
+    } finally {
+      config.storageQuotaBytes = 0;
+    }
+  });
+
+  test("a read-only site can be read and signed into, but not changed", async () => {
+    config.readOnly = true;
+    try {
+      assert.equal((await anon.get("/api/auth/session")).data.readOnly, true);
+      assert.equal((await admin.get("/api/posts")).status, 200);
+      const r = await admin.post("/api/posts", { content: "Still here?" });
+      assert.equal(r.status, 503);
+      assert.match(r.data.error, /read-only/);
+      assert.equal((await admin.post("/api/uploads", jpeg())).status, 503);
+      const c = client();
+      assert.equal((await c.post("/api/auth/login", { email: "friend@example.com", password: "newpassword" })).status, 200);
+      assert.equal((await c.post("/api/auth/logout")).status, 200);
+    } finally {
+      config.readOnly = false;
+    }
+    assert.equal((await admin.post("/api/posts", { content: "Back to normal" })).status, 201);
   });
 });

@@ -30,6 +30,15 @@ export const config = {
   appLinkUrl: (env.APP_LINK_URL ?? "https://app.yeix.io/add").replace(/\/$/, ""),
   inviteDays: Number(env.INVITE_DAYS ?? 14),
   maxUploadBytes: Number(env.MAX_UPLOAD_MB ?? 50) * 1024 * 1024,
+  /**
+   * For hosted sites (docs/hosting.md). With a setup token, only someone with
+   * the setup link (/setup?token=…) can create the first admin account.
+   */
+  setupToken: env.SETUP_TOKEN || undefined,
+  /** Total size of all uploads, in bytes; 0 for no limit. */
+  storageQuotaBytes: Number(env.STORAGE_QUOTA_MB ?? 0) * 1024 * 1024,
+  /** Read-only: people can sign in and look, but nothing can be posted, uploaded or changed. */
+  readOnly: env.READ_ONLY === "true",
   storage: {
     driver: (env.STORAGE ?? "local") as "local" | "s3",
     localDir: path.resolve(env.UPLOADS_DIR ?? path.join(dataDir, "uploads")),
@@ -40,6 +49,8 @@ export const config = {
       accessKeyId: env.S3_ACCESS_KEY_ID,
       secretAccessKey: env.S3_SECRET_ACCESS_KEY,
       forcePathStyle: env.S3_FORCE_PATH_STYLE === "true",
+      /** Keeps each site's files in its own folder when several sites share a bucket, e.g. "smith-family/". */
+      prefix: env.S3_PREFIX ?? "",
     },
   },
   mail: {

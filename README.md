@@ -256,6 +256,10 @@ All settings are environment variables (or lines in `.env`). Everything is optio
 | `INVITE_DAYS` | `14` | How long an invite link works |
 | `DEVICE_DAYS` | `180` | How long the Northern Lights app stays signed in after it was last used |
 | `APP_LINK_URL` | `https://app.yeix.io/add` | Where **Get the app** QR codes point |
+| `S3_PREFIX` | none | A folder for this site's files, for hosts that keep many sites in one bucket |
+| `SETUP_TOKEN` | off | For hosted sites: only the link `/setup?token=<SETUP_TOKEN>` can create the first admin, so nobody else can claim a new site |
+| `STORAGE_QUOTA_MB` | no limit | Total size of all uploads; new uploads are refused once it's reached |
+| `READ_ONLY` | `false` | `true` lets people sign in and look, but not post, upload or change anything |
 
 The database schema is created and upgraded automatically when the server starts.
 

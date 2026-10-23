@@ -39,6 +39,12 @@ async function isPublicFile(db: DB, key: string) {
 export async function saveUpload(db: DB, storage: Storage, ownerId: string, file: File) {
   if (!ALLOWED.test(file.type)) throw new HTTPException(415, { message: `${file.name}: only photos and videos are allowed` });
   if (file.size > config.maxUploadBytes) throw new HTTPException(413, { message: `${file.name} is too large` });
+  if (config.storageQuotaBytes > 0) {
+    const used = await db.selectFrom("files").select((eb) => eb.fn.sum<number | string | null>("size").as("total")).executeTakeFirst();
+    if (Number(used?.total ?? 0) + file.size > config.storageQuotaBytes) {
+      throw new HTTPException(507, { message: "This site's storage is full. Remove some photos or videos, or ask the site's admin about more space." });
+    }
+  }
   const key = `${crypto.randomUUID()}.${EXT[file.type]}`;
   await storage.put(key, Buffer.from(await file.arrayBuffer()), file.type);
   await db.insertInto("files")

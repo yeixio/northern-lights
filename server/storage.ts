@@ -46,12 +46,12 @@ class S3Storage implements Storage {
   }
   async put(key: string, data: Buffer, mime: string) {
     const { s3, PutObjectCommand } = await this.client;
-    await s3.send(new PutObjectCommand({ Bucket: this.opts.bucket, Key: key, Body: data, ContentType: mime }));
+    await s3.send(new PutObjectCommand({ Bucket: this.opts.bucket, Key: this.opts.prefix + key, Body: data, ContentType: mime }));
   }
   async get(key: string) {
     const { s3, GetObjectCommand } = await this.client;
     try {
-      const res = await s3.send(new GetObjectCommand({ Bucket: this.opts.bucket, Key: key }));
+      const res = await s3.send(new GetObjectCommand({ Bucket: this.opts.bucket, Key: this.opts.prefix + key }));
       return (res.Body?.transformToWebStream() as ReadableStream | undefined) ?? null;
     } catch {
       return null;
@@ -59,7 +59,7 @@ class S3Storage implements Storage {
   }
   async remove(key: string) {
     const { s3, DeleteObjectCommand } = await this.client;
-    await s3.send(new DeleteObjectCommand({ Bucket: this.opts.bucket, Key: key }));
+    await s3.send(new DeleteObjectCommand({ Bucket: this.opts.bucket, Key: this.opts.prefix + key }));
   }
 }
 

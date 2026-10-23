@@ -7,6 +7,10 @@ import type { Preferences } from "../lib/theme";
 interface SessionInfo {
   user: Me | null;
   needsSetup: boolean;
+  /** A hosted site waiting for its owner: only the setup link can create the admin. */
+  setupNeedsLink?: boolean;
+  /** Nothing can be posted or changed (a hosted site out of credit). */
+  readOnly?: boolean;
   mailEnabled: boolean;
 }
 

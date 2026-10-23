@@ -17,7 +17,7 @@ type Panel = { kind: "theme" } | { kind: "section"; id: string } | null;
 
 export default function Home() {
   const { settings, theme, reload, previewTheme } = useSite();
-  const { user, needsSetup } = useAuth();
+  const { user, needsSetup, setupNeedsLink } = useAuth();
   const [params, setParams] = useSearchParams();
   const [albums, setAlbums] = useState<Album[] | null>(null);
   const [posts, setPosts] = useState<PublicPost[] | null>(null);
@@ -119,7 +119,7 @@ export default function Home() {
   return (
     <EditingContext.Provider value={editing}>
       <HomeDataContext.Provider value={{ albums, posts }}>
-        {needsSetup && <SetupBanner />}
+        {needsSetup && !setupNeedsLink && <SetupBanner />}
         {isAdmin && !editing && !settings?.home && <GettingStarted onEdit={startEditing} />}
 
         {editing && (

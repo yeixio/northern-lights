@@ -1,5 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import { AuthProvider } from "./auth/AuthProvider";
+import { AuthProvider, useAuth } from "./auth/AuthProvider";
 import { RequireAdmin, RequireMember } from "./auth/RequireMember";
 import PublicLayout from "./components/PublicLayout";
 import AppLayout from "./components/AppLayout";
@@ -25,6 +25,7 @@ import { SiteProvider } from "./lib/site";
 export default function App() {
   return (
     <AuthProvider>
+      <ReadOnlyBanner />
       <BrowserRouter>
         <SiteProvider>
           <Routes>
@@ -61,5 +62,16 @@ export default function App() {
         </SiteProvider>
       </BrowserRouter>
     </AuthProvider>
+  );
+}
+
+/** Shown on every page while the site is read-only. */
+function ReadOnlyBanner() {
+  const { readOnly } = useAuth();
+  if (!readOnly) return null;
+  return (
+    <p role="status" className="bg-amber-100 px-4 py-2 text-center text-sm text-amber-900">
+      This site is read-only for now. You can look around, but not post or change anything.
+    </p>
   );
 }

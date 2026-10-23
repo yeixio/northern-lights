@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
@@ -10,6 +11,7 @@ import { mailEnabled, sendMail } from "../mail.js";
 import { parseJson } from "../appearance.js";
 import { profile } from "../serialize.js";
 import { appUrl } from "../url.js";
+import { config } from "../config.js";
 
 const password = z.string().min(8, "Use at least 8 characters").max(200);
 const name = z.string().trim().min(1).max(100);
@@ -58,13 +60,26 @@ export const authRoutes = new Hono<AppEnv>()
     const user = c.get("user");
     const anyUser = await db.selectFrom("users").select("id").limit(1).executeTakeFirst();
     const me = user ? { ...profile(user), preferences: parseJson(user.preferences) } : null;
-    return c.json({ user: me, needsSetup: !anyUser, mailEnabled: await mailEnabled(db) });
+    return c.json({
+      user: me,
+      needsSetup: !anyUser,
+      // A hosted site is claimed with its setup link, not by whoever finds it first.
+      setupNeedsLink: !anyUser && Boolean(config.setupToken),
+      readOnly: config.readOnly,
+      mailEnabled: await mailEnabled(db),
+    });
   })
 
-  // First-run: create the admin account. Only works while there are no users.
+  // First-run: create the admin account. Only works while there are no users,
+  // and on a hosted site only with its setup token.
   .post("/setup", async (c) => {
     const db = c.get("db");
-    const body = z.object({ email, password, first_name: name, last_name: name }).parse(await c.req.json());
+    const body = z.object({ email, password, first_name: name, last_name: name, setup_token: z.string().optional() })
+      .parse(await c.req.json());
+    if (config.setupToken && !sameSecret(body.setup_token ?? "", config.setupToken)) {
+      rateLimit(`setup:${c.req.header("x-forwarded-for") ?? "local"}`);
+      throw new HTTPException(403, { message: "This site is set up with the link from its welcome email" });
+    }
     const id = newId();
     const t = now();
     const created = await db.transaction().execute(async (trx) => {
@@ -160,3 +175,8 @@ export const authRoutes = new Hono<AppEnv>()
     await startSession(c, db, id);
     return c.json({ ok: true });
   });
+
+function sameSecret(given: string, expected: string) {
+  const a = Buffer.from(given), b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
+}

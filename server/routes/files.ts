@@ -4,6 +4,7 @@ import { sql } from "kysely";
 import { requireUser, type AppEnv } from "../auth.js";
 import { config } from "../config.js";
 import { now, type DB } from "../db/index.js";
+import { validFileSignature } from "../signing.js";
 import type { Storage } from "../storage.js";
 
 const ALLOWED = /^(image\/(jpeg|png|gif|webp|avif|heic|heif)|video\/(mp4|webm|quicktime))$/;
@@ -65,7 +66,8 @@ export const fileRoutes = (storage: Storage) => new Hono<AppEnv>()
     const db = c.get("db");
     const meta = await db.selectFrom("files").selectAll().where("key", "=", key).executeTakeFirst();
     if (!meta) return c.notFound();
-    const member = c.get("user");
+    // Members see every file; the app uses signed links (server/signing.ts).
+    const member = c.get("user") !== null || (await validFileSignature(db, key, c.req.query("exp"), c.req.query("sig")));
     if (!member && !(await isPublicFile(db, key))) return c.notFound();
     const stream = await storage.get(key);
     if (!stream) return c.notFound();

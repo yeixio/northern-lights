@@ -16,6 +16,7 @@ import Albums from "./pages/app/Albums";
 import AlbumManage from "./pages/app/AlbumManage";
 import ImportFacebook from "./pages/app/ImportFacebook";
 import Invite from "./pages/app/Invite";
+import GetApp from "./pages/app/GetApp";
 import Admin from "./pages/app/Admin";
 import Appearance from "./pages/app/Appearance";
 import SiteSettings from "./pages/app/SiteSettings";
@@ -48,6 +49,7 @@ export default function App() {
                 <Route path="import/facebook" element={<ImportFacebook />} />
                 <Route path="invite" element={<Invite />} />
                 <Route path="settings" element={<Appearance />} />
+                <Route path="get-app" element={<GetApp />} />
                 <Route element={<RequireAdmin />}>
                   <Route path="admin" element={<Admin />} />
                   <Route path="admin/site" element={<SiteSettings />} />

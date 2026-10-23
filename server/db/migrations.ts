@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import type { Kysely } from "kysely";
 import type { Migration, MigrationProvider } from "kysely/migration";
 
@@ -185,6 +186,35 @@ const migrations: Record<string, Migration> = {
       await db.schema.alterTable("site_settings")
         .addColumn("show_credit", "integer", (c) => c.notNull().defaultTo(1)).execute();
       await db.schema.alterTable("site_settings").addColumn("mail", "text").execute();
+    },
+  },
+
+  "2026_10_23_005_devices": {
+    async up(db: Kysely<any>) {
+      // Sign-ins for the Northern Lights app: a session is either a browser
+      // cookie or a device token sent as a bearer header. Pairing codes are the
+      // one-time QR codes that hand the app a device token.
+      await db.schema.alterTable("sessions")
+        .addColumn("kind", "text", (c) => c.notNull().defaultTo("browser")).execute();
+      await db.schema.alterTable("sessions").addColumn("device_name", "text").execute();
+      await db.schema.alterTable("sessions").addColumn("last_used_at", "text").execute();
+
+      await db.schema
+        .createTable("pairing_codes")
+        .addColumn("code_hash", "text", (c) => c.primaryKey())
+        .addColumn("user_id", "text", (c) => c.notNull().references("users.id").onDelete("cascade"))
+        .addColumn("expires_at", "text", (c) => c.notNull())
+        .addColumn("created_at", "text", (c) => c.notNull())
+        .execute();
+
+      await db.schema
+        .createTable("secrets")
+        .addColumn("name", "text", (c) => c.primaryKey())
+        .addColumn("value", "text", (c) => c.notNull())
+        .execute();
+      await db.insertInto("secrets")
+        .values({ name: "file_signing", value: randomBytes(32).toString("base64url") })
+        .execute();
     },
   },
 };

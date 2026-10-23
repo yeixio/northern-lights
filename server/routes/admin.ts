@@ -8,9 +8,9 @@ import { publish } from "../events.js";
 import { fromAddress, mailSettingsSchema, mailSource, sendMail, siteMailSettings, transportFor } from "../mail.js";
 import { profile } from "../serialize.js";
 import { appUrl } from "../url.js";
+import { fileUrlSchema as fileUrl } from "../signing.js";
 
 const text = (max: number) => z.string().trim().max(max).nullable().optional();
-const fileUrl = z.string().regex(/^\/files\/[\w.-]+$/);
 
 /** Checks mail settings from the form. An empty password keeps the saved one. */
 async function withSavedPassword(db: DB, input: unknown) {

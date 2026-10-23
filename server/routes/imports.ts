@@ -7,6 +7,7 @@ import type { ImportsTable } from "../db/schema.js";
 import { publish } from "../events.js";
 import type { Storage } from "../storage.js";
 import { fileKey, saveUpload } from "./files.js";
+import { fileUrlSchema as fileUrl } from "../signing.js";
 
 // Importing from another site (today: a Facebook "Download Your Information"
 // export). The browser reads the export and sends it here piece by piece:
@@ -15,7 +16,6 @@ import { fileKey, saveUpload } from "./files.js";
 // again and only what's missing is added.
 
 const sourceKey = z.string().min(1).max(500);
-const fileUrl = z.string().regex(/^\/files\/[\w.-]+$/);
 const date = z.iso.datetime().optional();
 
 async function findImport(db: DB, userId: string, key: string) {

@@ -5,7 +5,7 @@ import {
   endSession, hashPassword, hashToken, newToken, rateLimit, requireUser, resetExpiry, startSession,
   verifyPassword, type AppEnv,
 } from "../auth.js";
-import { newId, now } from "../db/index.js";
+import { newId, now, type DB } from "../db/index.js";
 import { mailEnabled, sendMail } from "../mail.js";
 import { parseJson } from "../appearance.js";
 import { profile } from "../serialize.js";
@@ -14,6 +14,43 @@ import { appUrl } from "../url.js";
 const password = z.string().min(8, "Use at least 8 characters").max(200);
 const name = z.string().trim().min(1).max(100);
 const email = z.string().trim().toLowerCase().pipe(z.email());
+
+export const loginSchema = z.object({ email, password: z.string() });
+export const acceptSchema = z.object({ token: z.string(), password, first_name: name, last_name: name });
+
+/** Checks an email and password, shared by the website's and the app's sign-in. */
+export async function checkLogin(db: DB, body: z.infer<typeof loginSchema>) {
+  rateLimit(`login:${body.email}`);
+  const user = await db.selectFrom("users").selectAll().where("email", "=", body.email).executeTakeFirst();
+  const ok = user && (await verifyPassword(body.password, user.password_hash));
+  if (!user || !ok) throw new HTTPException(401, { message: "Wrong email or password" });
+  if (!user.is_active) throw new HTTPException(403, { message: "This account has been suspended" });
+  return user;
+}
+
+/** Creates the account an invite is for and returns its id. */
+export async function acceptInvite(db: DB, body: z.infer<typeof acceptSchema>) {
+  const id = newId();
+  const t = now();
+  await db.transaction().execute(async (trx) => {
+    const invite = await trx.selectFrom("invitations").selectAll()
+      .where("token_hash", "=", hashToken(body.token))
+      .where("accepted_at", "is", null)
+      .where("expires_at", ">", t)
+      .executeTakeFirst();
+    if (!invite) throw new HTTPException(400, { message: "This invite has expired or was already used" });
+    const taken = await trx.selectFrom("users").select("id").where("email", "=", invite.email).executeTakeFirst();
+    if (taken) throw new HTTPException(409, { message: "An account with this email already exists. Try signing in." });
+    await trx.insertInto("users").values({
+      id, email: invite.email, password_hash: await hashPassword(body.password),
+      first_name: body.first_name, last_name: body.last_name,
+      is_admin: 0, is_active: 1, created_at: t, updated_at: t,
+    }).execute();
+    await trx.updateTable("invitations").set({ accepted_at: t }).where("email", "=", invite.email)
+      .where("accepted_at", "is", null).execute();
+  });
+  return id;
+}
 
 export const authRoutes = new Hono<AppEnv>()
   .get("/session", async (c) => {
@@ -47,12 +84,7 @@ export const authRoutes = new Hono<AppEnv>()
 
   .post("/login", async (c) => {
     const db = c.get("db");
-    const body = z.object({ email, password: z.string() }).parse(await c.req.json());
-    rateLimit(`login:${body.email}`);
-    const user = await db.selectFrom("users").selectAll().where("email", "=", body.email).executeTakeFirst();
-    const ok = user && (await verifyPassword(body.password, user.password_hash));
-    if (!user || !ok) throw new HTTPException(401, { message: "Wrong email or password" });
-    if (!user.is_active) throw new HTTPException(403, { message: "This account has been suspended" });
+    const user = await checkLogin(db, loginSchema.parse(await c.req.json()));
     await startSession(c, db, user.id);
     return c.json({ user: profile(user) });
   })
@@ -124,26 +156,7 @@ export const authRoutes = new Hono<AppEnv>()
 
   .post("/invitations/accept", async (c) => {
     const db = c.get("db");
-    const body = z.object({ token: z.string(), password, first_name: name, last_name: name }).parse(await c.req.json());
-    const id = newId();
-    const t = now();
-    await db.transaction().execute(async (trx) => {
-      const invite = await trx.selectFrom("invitations").selectAll()
-        .where("token_hash", "=", hashToken(body.token))
-        .where("accepted_at", "is", null)
-        .where("expires_at", ">", t)
-        .executeTakeFirst();
-      if (!invite) throw new HTTPException(400, { message: "This invite has expired or was already used" });
-      const taken = await trx.selectFrom("users").select("id").where("email", "=", invite.email).executeTakeFirst();
-      if (taken) throw new HTTPException(409, { message: "An account with this email already exists. Try signing in." });
-      await trx.insertInto("users").values({
-        id, email: invite.email, password_hash: await hashPassword(body.password),
-        first_name: body.first_name, last_name: body.last_name,
-        is_admin: 0, is_active: 1, created_at: t, updated_at: t,
-      }).execute();
-      await trx.updateTable("invitations").set({ accepted_at: t }).where("email", "=", invite.email)
-        .where("accepted_at", "is", null).execute();
-    });
+    const id = await acceptInvite(db, acceptSchema.parse(await c.req.json()));
     await startSession(c, db, id);
     return c.json({ ok: true });
   });

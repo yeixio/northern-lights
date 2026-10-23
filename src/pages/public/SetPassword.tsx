@@ -12,7 +12,7 @@ import SiteLogo from "../../components/SiteLogo";
  *  - reset:   choosing a new password from a reset link (/reset-password?token=…)
  */
 export default function SetPassword({ mode }: { mode: "setup" | "welcome" | "reset" }) {
-  const { refresh, needsSetup, loading } = useAuth();
+  const { refresh, needsSetup, setupNeedsLink, loading } = useAuth();
   const navigate = useNavigate();
   const token = useSearchParams()[0].get("token") ?? "";
   const [invite, setInvite] = useState<{ email: string; message: string | null } | null | undefined>(undefined);
@@ -34,6 +34,9 @@ export default function SetPassword({ mode }: { mode: "setup" | "welcome" | "res
   if (mode === "setup" && !needsSetup) {
     return <p className="p-12 text-center text-ink-500">This site is already set up. <a className="underline" href="/login">Sign in</a>.</p>;
   }
+  if (mode === "setup" && setupNeedsLink && !token) {
+    return <p className="p-12 text-center text-ink-500">This site is waiting for its owner. Open the setup link from your welcome email.</p>;
+  }
   if (mode === "welcome" && !invite) {
     return <p className="p-12 text-center text-ink-500">This invite has expired or was already used. Ask for a new one.</p>;
   }
@@ -48,7 +51,7 @@ export default function SetPassword({ mode }: { mode: "setup" | "welcome" | "res
     setError(null);
     try {
       if (mode === "setup") {
-        await api.post("/api/auth/setup", { email, password, first_name: first, last_name: last });
+        await api.post("/api/auth/setup", { email, password, first_name: first, last_name: last, setup_token: token || undefined });
       } else if (mode === "welcome") {
         await api.post("/api/auth/invitations/accept", { token, password, first_name: first, last_name: last });
       } else {

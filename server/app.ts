@@ -55,6 +55,7 @@ export function createApp(db: DB, storage: Storage, opts: { serveClient?: boolea
 
   const api = new Hono<AppEnv>()
     .use(sameOrigin)
+    .use(readOnlyGuard)
     .use(signFilesForApp)
     .route("/auth", authRoutes)
     .route("/public", publicRoutes)
@@ -121,3 +122,14 @@ export function withSiteMeta(html: string, site: { site_name: string; tagline: s
   }
   return out.replace(/<title>.*?<\/title>/, () => tags.join("\n    "));
 }
+
+// Signing in and out still work on a read-only site, so people can look.
+const READ_ONLY_ALLOWED = new Set(["/api/auth/login", "/api/auth/logout", "/api/app/login", "/api/app/pair"]);
+
+/** On a read-only site (READ_ONLY=true), refuses every change. */
+const readOnlyGuard: MiddlewareHandler<AppEnv> = async (c, next) => {
+  if (config.readOnly && !["GET", "HEAD", "OPTIONS"].includes(c.req.method) && !READ_ONLY_ALLOWED.has(c.req.path)) {
+    throw new HTTPException(503, { message: "This site is read-only for now. You can look around, but not post or change anything." });
+  }
+  await next();
+};

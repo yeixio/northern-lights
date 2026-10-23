@@ -21,10 +21,27 @@ export interface UsersTable {
 }
 
 export interface SessionsTable {
-  id: string; // sha256 of the cookie token
+  id: string; // sha256 of the cookie or device token
   user_id: string;
   expires_at: string;
   created_at: string;
+  kind: "browser" | "device"; // browser = nl_session cookie, device = Authorization: Bearer
+  device_name: string | null;
+  last_used_at: string | null;
+}
+
+/** One-time codes shown as a QR on the website so the app can sign in. */
+export interface PairingCodesTable {
+  code_hash: string;
+  user_id: string;
+  expires_at: string;
+  created_at: string;
+}
+
+/** Server-generated keys, such as the one that signs media links. */
+export interface SecretsTable {
+  name: string;
+  value: string;
 }
 
 export interface InvitationsTable {
@@ -137,6 +154,8 @@ export interface ImportsTable {
 export interface Database {
   users: UsersTable;
   sessions: SessionsTable;
+  pairing_codes: PairingCodesTable;
+  secrets: SecretsTable;
   invitations: InvitationsTable;
   password_resets: PasswordResetsTable;
   site_settings: SiteSettingsTable;

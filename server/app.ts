@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-import { Hono, type Context } from "hono";
+import { Hono, type Context, type MiddlewareHandler } from "hono";
+import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { ZodError } from "zod";
@@ -9,7 +10,9 @@ import { config } from "./config.js";
 import type { DB } from "./db/index.js";
 import type { Storage } from "./storage.js";
 import { appUrl } from "./url.js";
+import { signFileUrls } from "./signing.js";
 import { adminRoutes } from "./routes/admin.js";
+import { appRoutes, instanceInfo } from "./routes/app.js";
 import { albumRoutes } from "./routes/albums.js";
 import { authRoutes } from "./routes/auth.js";
 import { fileRoutes, uploadRoutes } from "./routes/files.js";
@@ -33,13 +36,30 @@ export function createApp(db: DB, storage: Storage, opts: { serveClient?: boolea
     return c.json({ error: "Something went wrong" }, 500);
   });
 
+  // The Northern Lights app runs on its own origin and signs in with a bearer
+  // token, so it may call the API from anywhere. No credentials are allowed
+  // cross-site, so a browser's cookie is never used by another site.
+  const appCors = cors({
+    origin: "*",
+    allowHeaders: ["Authorization", "Content-Type"],
+    allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+    maxAge: 86_400,
+  });
+  app.use("/api/*", appCors);
+  app.use("/files/*", appCors);
+  app.use("/.well-known/*", appCors);
+
   app.use("*", loadUser(db));
+
+  app.get("/.well-known/northern-lights", async (c) => c.json(await instanceInfo(c)));
 
   const api = new Hono<AppEnv>()
     .use(sameOrigin)
+    .use(signFilesForApp)
     .route("/auth", authRoutes)
     .route("/public", publicRoutes)
     .route("/admin", adminRoutes)
+    .route("/", appRoutes)
     .route("/", inviteRoutes)
     .route("/", messageRoutes)
     .route("/", liveRoutes)
@@ -68,6 +88,17 @@ export function createApp(db: DB, storage: Storage, opts: { serveClient?: boolea
 
   return app;
 }
+
+/** The app gets signed links to private photos, since its <img> tags can't send its token. */
+const signFilesForApp: MiddlewareHandler<AppEnv> = async (c, next) => {
+  await next();
+  if (!c.get("viaDevice") || !c.res.headers.get("content-type")?.includes("application/json")) return;
+  const { status, headers } = c.res;
+  headers.delete("content-length");
+  const body = await signFileUrls(c.get("db"), await c.res.json());
+  c.res = undefined;
+  c.res = new Response(JSON.stringify(body), { status, headers });
+};
 
 const escape = (s: string) => s.replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`);
 

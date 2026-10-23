@@ -99,7 +99,7 @@ let friendId = "";
 before(async () => {
   // Start from an empty database when reusing a Postgres test db.
   for (const t of ["imports", "media", "albums", "messages", "reactions", "comments", "posts", "files",
-    "password_resets", "invitations", "sessions", "users"] as const) {
+    "password_resets", "invitations", "pairing_codes", "sessions", "users"] as const) {
     await db.deleteFrom(t).execute();
   }
 });
@@ -207,6 +207,170 @@ describe("messages", () => {
       token: new URL(inv.data.link).searchParams.get("token"), password: "thirdpass", first_name: "T", last_name: "Third",
     });
     assert.equal((await third.get("/api/messages")).data.length, 0);
+  });
+});
+
+describe("the Northern Lights app", () => {
+  const appOrigin = { origin: "https://app.yeix.io", host: "localhost" };
+  let phoneToken = "";
+
+  /** The app: no cookies, a bearer token, and a different origin. */
+  function device(token: string) {
+    const headers = { ...appOrigin, authorization: `Bearer ${token}` };
+    async function call(method: string, url: string, body?: unknown) {
+      const init: RequestInit = { method, headers: { ...headers } };
+      if (body instanceof FormData) init.body = body;
+      else if (body !== undefined) {
+        init.body = JSON.stringify(body);
+        (init.headers as Record<string, string>)["content-type"] = "application/json";
+      }
+      const res = await app.request(url, init);
+      const data = (res.headers.get("content-type") ?? "").includes("json") ? await res.json() : null;
+      return { status: res.status, data: data as any, headers: res.headers };
+    }
+    return {
+      get: (u: string) => call("GET", u),
+      post: (u: string, b?: unknown) => call("POST", u, b),
+      del: (u: string) => call("DELETE", u),
+    };
+  }
+
+  test("a site describes itself to the app, from any origin", async () => {
+    const res = await app.request("/.well-known/northern-lights", { headers: appOrigin });
+    assert.equal(res.headers.get("access-control-allow-origin"), "*");
+    const info = await res.json() as any;
+    assert.equal(info.software, "northern-lights");
+    assert.equal(info.api, 1);
+    assert.ok(info.features.includes("pairing"));
+    assert.equal(typeof info.name, "string");
+  });
+
+  test("preflight lets the app send its token but never cookies", async () => {
+    const res = await app.request("/api/posts", {
+      method: "OPTIONS",
+      headers: { ...appOrigin, "access-control-request-method": "POST", "access-control-request-headers": "authorization,content-type" },
+    });
+    assert.equal(res.headers.get("access-control-allow-origin"), "*");
+    assert.match(res.headers.get("access-control-allow-headers") ?? "", /authorization/i);
+    assert.equal(res.headers.get("access-control-allow-credentials"), null);
+  });
+
+  test("scanning the QR code signs the app in, once", async () => {
+    const pairing = await friend.post("/api/app/pairing");
+    assert.equal(pairing.status, 201);
+    assert.match(pairing.data.link, /^https:\/\/app\.yeix\.io\/add#instance=.+&code=/);
+    const code = pairing.data.code as string;
+    assert.equal((await anon.post("/api/app/pairing")).status, 401);
+
+    const res = await app.request("/api/app/pair", {
+      method: "POST",
+      headers: { ...appOrigin, "content-type": "application/json" },
+      body: JSON.stringify({ code, device_name: "Fran's phone" }),
+    });
+    assert.equal(res.status, 201);
+    assert.equal(res.headers.get("set-cookie"), null);
+    const paired = await res.json() as any;
+    assert.equal(paired.user.first_name, "Fran");
+    assert.equal(paired.instance.software, "northern-lights");
+
+    const phone = device(paired.token);
+    assert.equal((await phone.get("/api/posts")).status, 200);
+    assert.equal((await phone.post("/api/app/pair", { code })).status, 400);
+  });
+
+  test("the app can sign in, join from an invite, and post from its own origin", async () => {
+    assert.equal((await device("x").post("/api/app/login", { email: "friend@example.com", password: "nope" })).status, 401);
+    const login = await device("x").post("/api/app/login", { email: "friend@example.com", password: "friendpass" });
+    assert.equal(login.status, 201);
+    phoneToken = login.data.token;
+    const phone = device(phoneToken);
+    const post = await phone.post("/api/posts", { content: "From the app" });
+    assert.equal(post.status, 201);
+    assert.equal((await friend.get("/api/posts")).data[0].content, "From the app");
+
+    const inv = await admin.post("/api/invitations", { email: "appuser@example.com" });
+    const token = new URL(inv.data.link).searchParams.get("token")!;
+    const join = await device("x").post("/api/app/invitations/accept", { token, password: "apppass12", first_name: "Ann", last_name: "App" });
+    assert.equal(join.status, 201);
+    assert.equal((await device(join.data.token).get("/api/people")).status, 200);
+  });
+
+  test("a made-up or browser token gets nothing", async () => {
+    assert.equal((await device("not-a-token").get("/api/posts")).status, 401);
+    const browserToken = decodeURIComponent(friend.cookie().split("=")[1]);
+    assert.equal((await device(browserToken).get("/api/posts")).status, 401);
+  });
+
+  test("admin pages stay on the website", async () => {
+    const login = await device("x").post("/api/app/login", { email: "admin@example.com", password: "correct horse" });
+    assert.equal((await device(login.data.token).get("/api/admin/mail")).status, 403);
+    assert.equal((await admin.get("/api/admin/mail")).status, 200);
+  });
+
+  test("private photos reach the app as signed links", async () => {
+    const phone = device(phoneToken);
+    const form = new FormData();
+    form.append("file", new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0])], "b.jpg", { type: "image/jpeg" }));
+    const up = await phone.post("/api/uploads", form);
+    assert.equal(up.status, 201);
+    const signed = up.data[0].url as string;
+    assert.match(signed, /^\/files\/[\w.-]+\?exp=\d+&sig=[\w-]+$/);
+    const plain = signed.split("?")[0];
+
+    assert.equal((await anon.get(plain)).status, 404);
+    assert.equal((await anon.get(signed)).status, 200);
+    assert.equal((await anon.get(signed.replace(/sig=./, "sig=A"))).status, 404);
+    assert.equal((await anon.get(signed.replace(/exp=\d+/, "exp=1"))).status, 404);
+
+    // A signed link sent back is stored plain; the website sees it plain too.
+    await phone.post("/api/posts", { content: "photo", media_urls: [signed] });
+    assert.deepEqual((await friend.get("/api/posts")).data[0].media_urls, [plain]);
+    assert.match((await phone.get("/api/posts")).data[0].media_urls[0], /\?exp=/);
+  });
+
+  test("members see and remove their devices", async () => {
+    const login = await device("x").post("/api/app/login", { email: "friend@example.com", password: "friendpass", device_name: "Tablet" });
+    const tablet = device(login.data.token);
+    const list = (await tablet.get("/api/me/devices")).data as any[];
+    const mine = list.find((d) => d.current);
+    assert.equal(mine.device_name, "Tablet");
+    assert.ok(list.length >= 2);
+    assert.ok((await friend.get("/api/me/devices")).data.every((d: any) => !d.current));
+
+    assert.equal((await admin.del(`/api/me/devices/${mine.id}`)).status, 404);
+    assert.equal((await friend.del(`/api/me/devices/${mine.id}`)).status, 200);
+    assert.equal((await tablet.get("/api/posts")).status, 401);
+  });
+
+  test("signing out of the app ends only that device", async () => {
+    const phone = device(phoneToken);
+    assert.equal((await phone.post("/api/auth/logout")).status, 200);
+    assert.equal((await phone.get("/api/posts")).status, 401);
+    assert.equal((await friend.get("/api/posts")).status, 200);
+  });
+
+  test("summary counts what is new for the badge", async () => {
+    const since = new Date().toISOString();
+    const mine = await friend.post("/api/posts", { content: "count me" });
+    await admin.post("/api/posts", { content: "new from admin" });
+    await admin.post(`/api/posts/${mine.data.id}/like`);
+    await admin.post(`/api/posts/${mine.data.id}/comments`, { content: "nice" });
+    await admin.post("/api/messages", { recipient_id: friendId, content: "psst" });
+    const sum = (await friend.get(`/api/app/summary?since=${encodeURIComponent(since)}`)).data;
+    assert.equal(sum.new_posts, 1);
+    assert.equal(sum.new_likes_on_my_posts, 1);
+    assert.equal(sum.new_comments_on_my_posts, 1);
+    assert.ok(sum.unread_messages >= 1);
+  });
+
+  test("the feed cursor never skips posts that share a timestamp", async () => {
+    const at = "2020-01-01T00:00:00.000Z";
+    const ids = ["0001", "0002", "0003"].map((n) => `00000000-0000-4000-8000-00000000${n}`);
+    for (const id of ids) {
+      await db.insertInto("posts").values({ id, user_id: friendId, content: id, media_urls: "[]", is_public: 0, created_at: at, updated_at: at }).execute();
+    }
+    const page = (await friend.get(`/api/posts?before=${encodeURIComponent(`${at},${ids[2]}`)}`)).data;
+    assert.deepEqual(page.map((p: any) => p.id), [ids[1], ids[0]]);
   });
 });
 

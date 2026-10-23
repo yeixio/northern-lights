@@ -24,6 +24,10 @@ export const config = {
   appUrl: env.APP_URL?.replace(/\/$/, ""),
   cookieSecure: env.COOKIE_SECURE ? env.COOKIE_SECURE === "true" : (env.APP_URL ?? "").startsWith("https://"),
   sessionDays: Number(env.SESSION_DAYS ?? 30),
+  /** The Northern Lights app stays signed in this long after it was last used. */
+  deviceDays: Number(env.DEVICE_DAYS ?? 180),
+  /** Where "Get the app" QR codes and links point; the instance and a pairing code follow the #. */
+  appLinkUrl: (env.APP_LINK_URL ?? "https://app.yeix.io/add").replace(/\/$/, ""),
   inviteDays: Number(env.INVITE_DAYS ?? 14),
   maxUploadBytes: Number(env.MAX_UPLOAD_MB ?? 50) * 1024 * 1024,
   storage: {

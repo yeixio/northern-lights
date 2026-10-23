@@ -1,5 +1,5 @@
 import { NavLink, Outlet, Link } from "react-router-dom";
-import { Globe, Home, Images, LogOut, Mail, Moon, Palette, ShieldCheck, Sun, UserPlus, Users } from "lucide-react";
+import { Globe, Home, Images, LogOut, Mail, Moon, Palette, ShieldCheck, Smartphone, Sun, UserPlus, Users } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider";
 import { useSite } from "../lib/site";
 import SiteLogo from "./SiteLogo";
@@ -60,6 +60,7 @@ export default function AppLayout() {
         <div className="space-y-1 border-t border-ink-200 px-3 py-3">
           <Link to="/" className={link({ isActive: false })}><Globe size={18} /> Public page</Link>
           <NavLink to="/app/settings" className={link}><Palette size={18} /> Appearance</NavLink>
+          <NavLink to="/app/get-app" className={link}><Smartphone size={18} /> Get the app</NavLink>
         </div>
         <div className="flex items-center gap-3 border-t border-ink-200 p-3">
           <Link to={`/app/people/${profile?.id}`} className="flex min-w-0 flex-1 items-center gap-3 rounded-lg p-1.5 hover:bg-ink-100">
@@ -82,6 +83,7 @@ export default function AppLayout() {
         <div className="flex items-center gap-1">
           <Link to="/" className={iconBtn} aria-label="Public page"><Globe size={18} /></Link>
           <Link to="/app/settings" className={iconBtn} aria-label="Appearance"><Palette size={18} /></Link>
+          <Link to="/app/get-app" className={iconBtn} aria-label="Get the app"><Smartphone size={18} /></Link>
           <ModeToggle className={iconBtn} />
           <Link to={`/app/people/${profile?.id}`} className="ml-1"><Avatar profile={profile} size="sm" /></Link>
           <button onClick={signOut} className={iconBtn} aria-label="Sign out"><LogOut size={18} /></button>

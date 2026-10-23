@@ -7,8 +7,8 @@ import { requireUser, type AppEnv } from "../auth.js";
 import { newId, now, type DB } from "../db/index.js";
 import { publish } from "../events.js";
 import { authorColumns, bool, profile, withAuthor } from "../serialize.js";
+import { fileUrlSchema as fileUrl } from "../signing.js";
 
-const fileUrl = z.string().regex(/^\/files\/[\w.-]+$/, "Invalid file URL");
 
 function postQuery(db: DB, viewerId: string) {
   return db
@@ -58,9 +58,16 @@ export const socialRoutes = new Hono<AppEnv>()
   .get("/posts", async (c) => {
     const user = requireUser(c);
     const { author, before } = c.req.query();
-    let q = postQuery(c.get("db"), user.id).limit(30);
+    let q = postQuery(c.get("db"), user.id).orderBy("posts.id", "desc").limit(30);
     if (author) q = q.where("posts.user_id", "=", author);
-    if (before) q = q.where("posts.created_at", "<", before);
+    // `before` is the last post's created_at, or "<created_at>,<id>" so posts
+    // that share a timestamp are neither skipped nor repeated across pages.
+    if (before) {
+      const [at, id] = before.split(",");
+      q = id
+        ? q.where((eb) => eb.or([eb("posts.created_at", "<", at), eb.and([eb("posts.created_at", "=", at), eb("posts.id", "<", id)])]))
+        : q.where("posts.created_at", "<", at);
+    }
     return c.json((await q.execute()).map(serializePost));
   })
 

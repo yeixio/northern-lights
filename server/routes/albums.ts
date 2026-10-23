@@ -7,8 +7,8 @@ import type { User } from "../db/schema.js";
 import { album } from "../serialize.js";
 import type { Storage } from "../storage.js";
 import { fileKey } from "./files.js";
+import { fileUrlSchema as fileUrl } from "../signing.js";
 
-const fileUrl = z.string().regex(/^\/files\/[\w.-]+$/);
 
 async function editableAlbum(db: DB, id: string, user: User) {
   const a = await db.selectFrom("albums").selectAll().where("id", "=", id).executeTakeFirst();

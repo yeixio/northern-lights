@@ -37,7 +37,7 @@ const addDays = (days: number) => new Date(Date.now() + days * 86_400_000).toISO
 export async function startSession(c: Context, db: DB, userId: string) {
   const { token, hash } = newToken();
   const expires = addDays(config.sessionDays);
-  await db.insertInto("sessions").values({ id: hash, user_id: userId, expires_at: expires, created_at: now() }).execute();
+  await db.insertInto("sessions").values({ id: hash, user_id: userId, expires_at: expires, created_at: now(), kind: "browser" }).execute();
   setCookie(c, SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: "Lax",
@@ -47,37 +47,90 @@ export async function startSession(c: Context, db: DB, userId: string) {
   });
 }
 
+/** Signs the Northern Lights app in. The token is returned once and sent back as a bearer header. */
+export async function startDeviceSession(db: DB, userId: string, deviceName: string) {
+  const { token, hash } = newToken();
+  const t = now();
+  await db.insertInto("sessions").values({
+    id: hash, user_id: userId, expires_at: addDays(config.deviceDays), created_at: t,
+    kind: "device", device_name: deviceName, last_used_at: t,
+  }).execute();
+  return token;
+}
+
+/** The app's device token, from `Authorization: Bearer <token>`. */
+export function bearerToken(c: Context) {
+  const header = c.req.header("authorization");
+  return header && /^Bearer\s+/i.test(header) ? header.replace(/^Bearer\s+/i, "").trim() : null;
+}
+
 export async function endSession(c: Context, db: DB) {
+  const bearer = bearerToken(c);
+  if (bearer) {
+    await db.deleteFrom("sessions").where("id", "=", hashToken(bearer)).where("kind", "=", "device").execute();
+    return;
+  }
   const token = getCookie(c, SESSION_COOKIE);
   if (token) await db.deleteFrom("sessions").where("id", "=", hashToken(token)).execute();
   deleteCookie(c, SESSION_COOKIE, { path: "/" });
 }
 
-export async function userFromRequest(c: Context, db: DB): Promise<User | null> {
-  const token = getCookie(c, SESSION_COOKIE);
+type Auth = { user: User; sessionId: string; kind: "browser" | "device" };
+
+/**
+ * Finds who is signed in. A request with a bearer header is the app and is
+ * judged on that token alone, so a browser's cookie never rides along with it.
+ */
+export async function authFromRequest(c: Context, db: DB): Promise<Auth | null> {
+  const bearer = bearerToken(c);
+  const token = bearer ?? getCookie(c, SESSION_COOKIE);
   if (!token) return null;
+  const kind = bearer ? "device" : "browser";
   const row = await db
     .selectFrom("sessions")
     .innerJoin("users", "users.id", "sessions.user_id")
     .selectAll("users")
+    .select(["sessions.id as session_id", "sessions.last_used_at as session_used_at"])
     .where("sessions.id", "=", hashToken(token))
+    .where("sessions.kind", "=", kind)
     .where("sessions.expires_at", ">", now())
     .where("users.is_active", "=", 1)
     .executeTakeFirst();
-  return row ?? null;
+  if (!row) return null;
+  const { session_id, session_used_at, ...user } = row;
+  // Device tokens stay valid while the app is used: push the expiry forward, at most once an hour.
+  if (kind === "device" && (!session_used_at || Date.parse(session_used_at) < Date.now() - 3_600_000)) {
+    await db.updateTable("sessions").set({ last_used_at: now(), expires_at: addDays(config.deviceDays) })
+      .where("id", "=", session_id).execute();
+  }
+  return { user, sessionId: session_id, kind };
 }
 
-export type AppEnv = { Variables: { user: User | null; db: DB } };
+export async function userFromRequest(c: Context, db: DB): Promise<User | null> {
+  return (await authFromRequest(c, db))?.user ?? null;
+}
+
+export type AppEnv = {
+  Variables: { user: User | null; db: DB; sessionId: string | null; viaDevice: boolean };
+};
 
 export const loadUser = (db: DB): MiddlewareHandler<AppEnv> => async (c, next) => {
   c.set("db", db);
-  c.set("user", await userFromRequest(c, db));
+  const auth = await authFromRequest(c, db);
+  c.set("user", auth?.user ?? null);
+  c.set("sessionId", auth?.sessionId ?? null);
+  c.set("viaDevice", auth?.kind === "device");
   await next();
 };
 
-/** Rejects cross-site writes: browsers always send Origin on POST/PATCH/DELETE. */
+/**
+ * Rejects cross-site writes: browsers always send Origin on POST/PATCH/DELETE.
+ * Only cookies are sent without asking, so requests that carry a bearer token
+ * (the app) and the app's sign-in routes, which never set a cookie, are let through.
+ */
 export const sameOrigin: MiddlewareHandler = async (c, next) => {
-  if (!["GET", "HEAD", "OPTIONS"].includes(c.req.method)) {
+  const cookieFree = bearerToken(c) !== null || /^\/api\/app\/(login|pair|invitations\/accept)$/.test(c.req.path);
+  if (!cookieFree && !["GET", "HEAD", "OPTIONS"].includes(c.req.method)) {
     const origin = c.req.header("origin");
     const host = c.req.header("x-forwarded-host") ?? c.req.header("host");
     if (origin && host && new URL(origin).host !== host) {
@@ -96,6 +149,8 @@ export function requireUser(c: Context<AppEnv>): User {
 export function requireAdmin(c: Context<AppEnv>): User {
   const user = requireUser(c);
   if (!user.is_admin) throw new HTTPException(403, { message: "Admins only" });
+  // The app signs in as a member; site administration stays on the website for now.
+  if (c.get("viaDevice")) throw new HTTPException(403, { message: "Use the website for admin pages" });
   return user;
 }
 

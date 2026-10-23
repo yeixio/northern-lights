@@ -66,6 +66,9 @@ made up, and the photos are painted in code. Run it yourself with
   "Download your information" export, with captions and original dates
 - Admin tools: suspend, restore, promote, or remove members, and make reset links
 - Uploaded photos are private to members unless they're used on the public page
+- Ready for the upcoming Northern Lights app, which shows several sites in one
+  feed: members connect it by scanning a QR code on **Get the app**, and can
+  sign devices out there. See [docs/app-api.md](docs/app-api.md).
 
 ## Quick start
 
@@ -250,6 +253,8 @@ All settings are environment variables (or lines in `.env`). Everything is optio
 | `S3_BUCKET`, `S3_REGION`, `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_FORCE_PATH_STYLE` | | For `STORAGE=s3`. Works with AWS, Backblaze B2, Cloudflare R2, MinIO and others, and with Google Drive, Dropbox or OneDrive through [rclone](docs/cloud-storage.md). |
 | `SESSION_DAYS` | `30` | How long a login lasts |
 | `INVITE_DAYS` | `14` | How long an invite link works |
+| `DEVICE_DAYS` | `180` | How long the Northern Lights app stays signed in after it was last used |
+| `APP_LINK_URL` | `https://app.yeix.io/add` | Where **Get the app** QR codes point |
 
 The database schema is created and upgraded automatically when the server starts.
 
@@ -318,6 +323,8 @@ Each member can also choose their own colors and light or dark mode under
 | Admin | Everything members can, plus editing the public page and managing members |
 
 Every check happens on the server. The browser never talks to the database.
+The Northern Lights app signs in as a member with its own device token; admin
+pages stay on the website.
 
 ## Project layout
 
@@ -328,7 +335,8 @@ server/
   db/              Kysely schema and migrations (SQLite + Postgres)
   appearance.ts    what may be saved as a theme, home page or member preference
   mail.ts          sending email, set up by SMTP_URL or in Site settings
-  routes/          auth, public, posts, messages, albums, files, invites, admin, live updates
+  routes/          auth, public, posts, messages, albums, files, invites, admin, live updates, app
+  signing.ts       signed photo links for the app
   app.test.ts      end-to-end API tests
 src/
   auth/            session context, route guards
@@ -346,6 +354,7 @@ charts/            Helm chart
 deploy/kubernetes/ plain Kubernetes manifests (kustomize)
 scripts/demo/       demo data (npm run demo) and the README screenshots (npm run screenshots)
 docs/
+  app-api.md            how the Northern Lights app signs in and talks to a site
   releasing.md          how releases are cut and the one-time setup they need
   recovered-schema.md   notes on the original project this was rebuilt from
 ```

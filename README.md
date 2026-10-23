@@ -66,9 +66,10 @@ made up, and the photos are painted in code. Run it yourself with
   "Download your information" export, with captions and original dates
 - Admin tools: suspend, restore, promote, or remove members, and make reset links
 - Uploaded photos are private to members unless they're used on the public page
-- Ready for the upcoming Northern Lights app, which shows several sites in one
-  feed: members connect it by scanning a QR code on **Get the app**, and can
-  sign devices out there. See [docs/app-api.md](docs/app-api.md).
+- The Northern Lights app at [app.yeix.io](https://app.yeix.io) shows every
+  site you belong to in one feed and one inbox. Members connect it by scanning
+  a QR code on **Get the app**, and can sign devices out there. See
+  [docs/app.md](docs/app.md).
 
 ## Quick start
 
@@ -338,7 +339,9 @@ server/
   routes/          auth, public, posts, messages, albums, files, invites, admin, live updates, app
   signing.ts       signed photo links for the app
   app.test.ts      end-to-end API tests
+hub/               the Northern Lights app's page, icon and offline support (built with vite.hub.config.ts)
 src/
+  hub/             the Northern Lights app: sites, merged feed, messages
   auth/            session context, route guards
   components/      layouts, post card, composer, avatars, theme panel
   components/home/ home page sections and the in-place editor
@@ -354,6 +357,7 @@ charts/            Helm chart
 deploy/kubernetes/ plain Kubernetes manifests (kustomize)
 scripts/demo/       demo data (npm run demo) and the README screenshots (npm run screenshots)
 docs/
+  app.md                the Northern Lights app: adding sites, running and publishing it
   app-api.md            how the Northern Lights app signs in and talks to a site
   releasing.md          how releases are cut and the one-time setup they need
   recovered-schema.md   notes on the original project this was rebuilt from

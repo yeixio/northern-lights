@@ -1,4 +1,4 @@
-const isVideo = (url: string) => /\.(mp4|webm|mov|m4v)$/i.test(url);
+const isVideo = (url: string) => /\.(mp4|webm|mov|m4v)(\?|$)/i.test(url); // signed links end in ?exp=…
 
 export default function MediaGrid({ urls }: { urls: string[] }) {
   if (urls.length === 0) return null;

@@ -11,7 +11,7 @@
     "dev:client": "vite",
     "dev:hub": "vite --config vite.hub.config.ts",
     "build": "tsc -b && vite build && tsc -p server/tsconfig.json",
-    "build:hub": "vite build --config vite.hub.config.ts && cp dist/hub/index.html dist/hub/404.html",
+    "build:hub": "vite build --config vite.hub.config.ts",
     "start": "node dist/server/index.js",
     "test": "tsx --test server/app.test.ts src/lib/facebook.test.ts src/hub/merge.test.ts",
     "typecheck": "tsc -b && tsc -p server/tsconfig.json --noEmit && tsc -p scripts/tsconfig.json",

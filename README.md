@@ -343,7 +343,7 @@ server/
   routes/          auth, public, posts, messages, albums, files, invites, admin, live updates, app
   signing.ts       signed photo links for the app
   app.test.ts      end-to-end API tests
-hub/               the Northern Lights app's page, icon and offline support (built with vite.hub.config.ts)
+hub/               the Northern Lights app's page, icon, offline support and nginx image (built with vite.hub.config.ts)
 src/
   hub/             the Northern Lights app: sites, merged feed, messages
   auth/            session context, route guards

@@ -1,0 +1,11 @@
+{
+  "name": "Northern Lights",
+  "short_name": "Northern Lights",
+  "description": "Every Northern Lights site you belong to, in one feed.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f7f8fa",
+  "theme_color": "#059669",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

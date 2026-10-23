@@ -1,0 +1,3 @@
+/* The site's styles. The app is built from hub/, so Tailwind is told where its classes live. */
+@import "../index.css";
+@source "..";

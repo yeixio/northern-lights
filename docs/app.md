@@ -43,19 +43,27 @@ the QR link's host to `localhost:5174`). Browsers allow an app served over
 https to call `http://localhost`, but not plain `http://` addresses on a home
 network, so sites need https to be added from app.yeix.io.
 
-`npm run build:hub` writes the app to `dist/hub/`. `404.html` is a copy of
-`index.html` so the app's pages work when opened directly on GitHub Pages.
+`npm run build:hub` writes the app to `dist/hub/`. Any server that answers
+unknown paths with `index.html` can serve it; `hub/nginx.conf` is the one the
+image uses.
 
 ## Publishing
 
-`.github/workflows/app.yml` builds the app on every pull request and publishes
-`dist/hub/` to GitHub Pages on every push to `main`. One-time setup:
+`.github/workflows/app.yml` builds the app into a small nginx image
+(`hub/Dockerfile`) on every pull request and checks that it serves the app. On
+every push to `main` it publishes the image to
+`ghcr.io/yeixio/northern-lights-app` as `:main` and `:sha-<commit>`.
 
-1. In the repository's **Settings → Pages**, set **Source** to **GitHub Actions**.
-2. Add a DNS record for `app.yeix.io`: `CNAME` pointing to `yeixio.github.io`.
-3. Back in **Settings → Pages**, check that the custom domain shows
-   `app.yeix.io` (it comes from `hub/public/CNAME`) and turn on **Enforce HTTPS**
-   once the certificate is ready.
+app.yeix.io runs that image on the yeix.io Kubernetes cluster, next to the
+yeix.io site, behind the cluster's shared ingress with a Let's Encrypt
+certificate. The manifest is `k8s/overlays/prod/northern-lights-app.yaml` in
+the yeix.io repository, and that file says how a new build goes live.
+
+The image needs no settings and no storage. It listens on port 8080 as a
+non-root user and answers `/healthz`. `index.html`, `sw.js` and the manifest
+are sent with `Cache-Control: no-cache` so people get a new version on their
+next visit; files under `/assets/` have content hashes in their names and are
+cached for a year.
 
 ## Not yet
 

@@ -1,17 +1,18 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import HubApp from "./HubApp";
+import { restoreStorage } from "./native";
 import "./hub.css";
 
-// The Northern Lights app (app.yeix.io): every site you belong to in one feed.
-// Built separately from the site itself with `npm run build:hub`.
+// The Northern Lights app: every site you belong to in one feed. It ships as
+// the iPhone and Android apps (capacitor.config.ts, mobile/); `npm run dev:hub`
+// runs it in a browser for development.
 
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <HubApp />
-  </StrictMode>,
-);
-
-if ("serviceWorker" in navigator && import.meta.env.PROD) {
-  void navigator.serviceWorker.register("/sw.js");
-}
+// The site list has to be back in place before sites.ts reads it.
+void restoreStorage().finally(async () => {
+  const { default: HubApp } = await import("./HubApp");
+  createRoot(document.getElementById("root")!).render(
+    <StrictMode>
+      <HubApp />
+    </StrictMode>,
+  );
+});

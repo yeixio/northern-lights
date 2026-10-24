@@ -1,0 +1,99 @@
+name: Google Play
+
+# Builds the Android app (mobile/android) as a signed App Bundle and uploads it
+# to a Google Play testing track. Runs for app tags (app-v1.2.3) and by hand.
+# Adapted from yeixio/prox .github/workflows/android-play.yml; the signing
+# secrets are the yeixio organization ones (docs/mobile.md).
+#
+# Without PLAY_SERVICE_ACCOUNT_JSON, or before the app's first bundle has been
+# uploaded by hand in Play Console (Play's API can't do the first one), the
+# signed bundle is attached to the run to upload by hand.
+# The repository variable PLAY_RELEASE_STATUS can be "draft" while Play still
+# treats the app as a draft; it's "completed" otherwise.
+on:
+  push:
+    tags: ["app-v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version, like 1.0.0"
+        required: true
+        type: string
+      track:
+        description: "Play track"
+        required: false
+        type: choice
+        default: internal
+        options: [internal, alpha, beta]
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  bundle:
+    runs-on: ${{ fromJSON(vars.ANDROID_RUNS_ON || '"ubuntu-latest"') }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        if: runner.environment == 'github-hosted'
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+          cache-dependency-path: mobile/android/**/*.gradle*
+      - name: Build the signed bundle and upload
+        env:
+          VERSION: ${{ inputs.version || github.ref_name }}
+          ANDROID_UPLOAD_KEYSTORE_BASE64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_BASE64 }}
+          ANDROID_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_STORE_PASSWORD }}
+          ANDROID_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+          ANDROID_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+          PLAY_SERVICE_ACCOUNT_JSON_CONTENT: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          PLAY_TRACK: ${{ inputs.track || 'internal' }}
+          PLAY_RELEASE_STATUS: ${{ vars.PLAY_RELEASE_STATUS || 'completed' }}
+        run: |
+          set -euo pipefail
+          export VERSION="${VERSION#app-}"
+          export VERSION="${VERSION#v}"
+          missing=0
+          for name in ANDROID_UPLOAD_KEYSTORE_BASE64 ANDROID_UPLOAD_STORE_PASSWORD ANDROID_UPLOAD_KEY_ALIAS ANDROID_UPLOAD_KEY_PASSWORD; do
+            if [ -z "${!name:-}" ]; then
+              echo "Android upload key secret not set: $name"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "::error title=Not built::The yeixio Android upload key secrets aren't available to this repository (docs/mobile.md)."
+            exit 1
+          fi
+
+          export ANDROID_UPLOAD_KEYSTORE="$RUNNER_TEMP/upload.jks"
+          echo "$ANDROID_UPLOAD_KEYSTORE_BASE64" | base64 --decode > "$ANDROID_UPLOAD_KEYSTORE"
+          if [ -n "$PLAY_SERVICE_ACCOUNT_JSON_CONTENT" ]; then
+            export PLAY_SERVICE_ACCOUNT_JSON="$RUNNER_TEMP/play.json"
+            printf '%s' "$PLAY_SERVICE_ACCOUNT_JSON_CONTENT" > "$PLAY_SERVICE_ACCOUNT_JSON"
+            export UPLOAD_PLAY=1
+          else
+            echo "::notice title=Not uploaded::PLAY_SERVICE_ACCOUNT_JSON isn't set, so the signed bundle is attached to this run for uploading by hand."
+          fi
+          ./mobile/scripts/package-android.sh
+      - uses: actions/upload-artifact@v4
+        # Also after a failed Play upload: the first bundle for a new app has to be uploaded by hand.
+        if: always() && hashFiles('dist/NorthernLights.aab') != ''
+        continue-on-error: true
+        with:
+          name: northern-lights-android-bundle
+          path: dist/NorthernLights.aab
+          retention-days: 14
+      - name: Remove the signing files
+        if: always()
+        run: rm -f "$RUNNER_TEMP/upload.jks" "$RUNNER_TEMP/play.json"

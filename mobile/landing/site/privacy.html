@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="description" content="Every Northern Lights site you belong to, in one app for iPhone and Android." />
+    <title>Northern Lights app privacy</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f7f8fa;
+        --card: #ffffff;
+        --ink: #0f172a;
+        --muted: #475569;
+        --line: #e2e8f0;
+        --primary: #059669;
+        --on-primary: #ffffff;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0b1220;
+          --card: #111a2e;
+          --ink: #e2e8f0;
+          --muted: #94a3b8;
+          --line: #1e293b;
+          --primary: #34d399;
+          --on-primary: #052e1f;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px 16px;
+        background: var(--bg);
+        color: var(--ink);
+        font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      }
+      main { width: 100%; max-width: 640px; }
+      h2 { font-size: 1.1rem; margin: 24px 0 4px; }
+      a { color: var(--primary); }
+      .logo { width: 72px; height: 72px; }
+      h1 { font-size: 1.6rem; margin: 16px 0 4px; }
+      p { color: var(--muted); margin: 0 0 16px; }
+      .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px; margin-top: 24px; }
+      .card p:last-child { margin-bottom: 0; }
+      .btn {
+        display: block;
+        padding: 12px 16px;
+        margin: 10px 0;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        color: var(--ink);
+        text-decoration: none;
+        font-weight: 600;
+      }
+      .btn.primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+      .btn[aria-disabled="true"] { opacity: 0.55; pointer-events: none; }
+      .small { font-size: 0.875rem; }
+      [hidden] { display: none !important; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Northern Lights app privacy</h1>
+      <p>Last updated 24 October 2026.</p>
+
+      <h2>What the app is</h2>
+      <p>The Northern Lights app shows the Northern Lights sites you belong to in one place. Each site is run by its own
+      owner, a family, club or group, on their own server. The app is made by yeix.</p>
+
+      <h2>What we collect</h2>
+      <p>Nothing. The app talks only to the sites you add, straight from your phone. yeix runs no server behind the
+      app, and the app has no analytics, advertising or tracking.</p>
+
+      <h2>What stays on your phone</h2>
+      <p>The list of sites you added, a sign-in for each one, and a copy of the most recent posts so the app opens
+      quickly. Removing a site, or the app, deletes them. Each sign-in can also be removed from the site, under
+      <strong>Get the app, Your devices</strong>.</p>
+
+      <h2>What the sites see</h2>
+      <p>What you post, send and like goes to that site, and its owner looks after it under that site's own rules.
+      A site sees your phone's name ("Northern Lights app on iPhone") and when the app last used its sign-in. Ask the
+      site's owner about anything you've shared there, or to delete your account.</p>
+
+      <h2>Photos and camera</h2>
+      <p>The app asks for your photos or camera only when you choose to add a photo or video to a post, and sends it
+      only to the site you post on.</p>
+
+      <h2>Contact</h2>
+      <p>Questions about the app: <a href="mailto:info@yeix.io">info@yeix.io</a>.</p>
+    </main>
+  </body>
+</html>

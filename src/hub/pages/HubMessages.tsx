@@ -80,7 +80,7 @@ export default function HubMessages() {
     <div className="mx-auto grid max-w-5xl gap-4 md:grid-cols-[20rem_1fr]">
       {list}
       {open && site && person ? (
-        <section className="card flex h-[calc(100vh-10rem)] flex-col">
+        <section className="card flex h-[calc(100dvh-10rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] flex-col">
           <header className="flex items-center gap-3 border-b border-ink-100 p-4">
             <button className="btn-ghost px-2 md:hidden" onClick={() => navigate("/messages")} aria-label="Back"><ArrowLeft size={18} /></button>
             <Avatar profile={person} size="sm" />

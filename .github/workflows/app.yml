@@ -1,9 +1,10 @@
 name: App
 
-# Builds the Northern Lights app (hub/, src/hub/) as a small nginx image
-# (hub/Dockerfile). Pull requests build and check it; pushes to main publish it
-# to ghcr.io/yeixio/northern-lights-app as :main and :sha-<commit>, which the
-# yeix.io cluster serves at app.yeix.io (docs/app.md).
+# Builds app.yeix.io, the page QR codes from "Get the app" open, as a small
+# nginx image (mobile/landing/). It sends people into the iPhone or Android
+# app, or to the stores. Pull requests build and check it; pushes to main
+# publish it to ghcr.io/yeixio/northern-lights-app as :main and :sha-<commit>,
+# which the yeix.io cluster serves (docs/mobile.md).
 
 on:
   push:
@@ -36,7 +37,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: hub/Dockerfile
+          file: mobile/landing/Dockerfile
           load: true
           tags: northern-lights-app:test
           cache-from: type=gha,scope=app
@@ -49,8 +50,8 @@ jobs:
             if curl -fsS http://localhost:8080/healthz; then break; fi
             sleep 1
           done
-          curl -fsS http://localhost:8080/messages | grep -q '<div id="root">'
-          curl -fsS http://localhost:8080/sw.js > /dev/null
+          curl -fsS http://localhost:8080/add | grep -q 'Open in Northern Lights'
+          curl -fsS http://localhost:8080/favicon.svg > /dev/null
           docker logs app
 
       - id: meta
@@ -69,14 +70,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Every stage but the last runs on the build machine, and the last only
-      # copies files, so the arm64 image needs no emulation.
+      # The image only copies files onto nginx, so the arm64 one needs no emulation.
       - name: Push
         if: github.event_name != 'pull_request'
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: hub/Dockerfile
+          file: mobile/landing/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}

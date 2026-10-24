@@ -61,20 +61,28 @@ in each store, on purpose.
 
 ## Secrets
 
-The workflows use the same yeixio **organization secrets** as Proxa
-(yeixio/prox `packaging/org-secrets.md` has how each was made):
-`ASC_API_KEY_ID`, `ASC_API_ISSUER_ID`, `ASC_API_KEY_P8_BASE64`,
+The workflows use the yeix store credentials every yeix app shares, kept as
+yeixio **organization secrets**. yeixio/yeix-credentials lists them, how each
+was made, when they expire and how to rotate them: `ASC_API_KEY_ID`,
+`ASC_API_ISSUER_ID`, `ASC_API_KEY_P8_BASE64`,
 `APPSTORE_DISTRIBUTION_P12_BASE64`, `APPSTORE_DISTRIBUTION_PASSWORD`,
 `ANDROID_UPLOAD_KEYSTORE_BASE64`, `ANDROID_UPLOAD_STORE_PASSWORD`,
 `ANDROID_UPLOAD_KEY_ALIAS`, `ANDROID_UPLOAD_KEY_PASSWORD` and
 `PLAY_SERVICE_ACCOUNT_JSON`.
 
-Organization secrets only reach the repositories they're shared with. Add
-**northern-lights** to each one: organization **Settings → Secrets and
-variables → Actions**, open the secret, and add the repository under
-**Repository access**. Or with the GitHub CLI, for each secret:
-`gh secret set NAME --org yeixio --repos prox,toskar-apps,northern-lights`
-(this sets the value again, so it needs the original file or text).
+Organization secrets only reach the repositories they're shared with. To
+add northern-lights to all ten without touching their values (a yeixio
+owner, with the GitHub CLI):
+
+```sh
+repo_id=$(gh api repos/yeixio/northern-lights --jq .id)
+for s in ASC_API_KEY_ID ASC_API_ISSUER_ID ASC_API_KEY_P8_BASE64 \
+         APPSTORE_DISTRIBUTION_P12_BASE64 APPSTORE_DISTRIBUTION_PASSWORD \
+         PLAY_SERVICE_ACCOUNT_JSON ANDROID_UPLOAD_KEYSTORE_BASE64 \
+         ANDROID_UPLOAD_KEY_ALIAS ANDROID_UPLOAD_STORE_PASSWORD ANDROID_UPLOAD_KEY_PASSWORD; do
+  gh api -X PUT orgs/yeixio/actions/secrets/$s/repositories/$repo_id
+done
+```
 
 There is no provisioning profile secret: the iOS workflow registers the
 bundle id and makes or finds its App Store profile with the API key
@@ -99,16 +107,18 @@ bundle id and makes or finds its App Store profile with the API key
 **Google Play Console**
 
 1. **Create app**, "Northern Lights", package `com.yeix.northernlights`.
-2. Play's API can't upload an app's first bundle. Run **Google Play** once,
-   download the bundle from the run, and upload it by hand under **Testing →
-   Internal testing**. Later runs upload by themselves.
+2. Play's API can't upload an app's first bundle. Run **Google Play** once:
+   the upload fails with "Package not found", but the signed bundle is
+   attached to the run. Upload it by hand under **Testing → Internal testing
+   → Create new release** and accept Play App Signing. Later runs upload by
+   themselves. If Play says the bundle is "signed with the wrong key", see
+   yeixio/yeix-credentials MIGRATION.md.
 3. Complete App content: privacy policy `https://app.yeix.io/privacy`, Data
    safety (no data collected or shared by the developer), App access (the
    same demo site and account as for Apple), content rating, target audience,
    and the user-generated content declaration.
-4. Give the service account in `PLAY_SERVICE_ACCOUNT_JSON` release access to
-   the new app under **Users and permissions**, if it doesn't have access to
-   all apps.
+4. The publisher service account has account-level access, so it can upload
+   to the new app with nothing more to set.
 
 ## app.yeix.io
 

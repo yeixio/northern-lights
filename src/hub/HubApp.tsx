@@ -1,8 +1,11 @@
 import { useEffect } from "react";
-import { BrowserRouter, Link, Navigate, NavLink, Outlet, Route, Routes, useLocation } from "react-router-dom";
+import { BrowserRouter, Link, Navigate, NavLink, Outlet, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { App as NativeApp } from "@capacitor/app";
 import { Home, LayoutGrid, Mail, Plus } from "lucide-react";
 import { applyTheme, DEFAULT_THEME, resolveTheme } from "../lib/theme";
 import { useSummaries } from "./inbox";
+import { linkPath } from "./links";
+import { isNative } from "./native";
 import AddSite from "./pages/AddSite";
 import HubFeed from "./pages/HubFeed";
 import HubMessages from "./pages/HubMessages";
@@ -21,6 +24,24 @@ function useSystemTheme() {
   }, []);
 }
 
+/** Links that open the app (a scanned QR code, "Open the app") go to their page. */
+function useAppLinks() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (!isNative) return;
+    const listener = NativeApp.addListener("appUrlOpen", ({ url }) => {
+      const to = linkPath(url);
+      if (to) navigate(to);
+    });
+    return () => void listener.then((l) => l.remove());
+  }, [navigate]);
+}
+
+/** A new link remounts the page, so a second QR code is read like the first. */
+function AddRoute() {
+  return <AddSite key={useLocation().key} />;
+}
+
 const link = ({ isActive }: { isActive: boolean }) =>
   `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
     isActive ? "bg-primary-50 text-primary-700" : "text-ink-600 hover:bg-ink-100 hover:text-ink-900"
@@ -34,6 +55,7 @@ function Layout() {
   const sites = useSites();
   const { unreadMessages } = useSummaries(sites.filter((s) => !s.signedOut));
   const { pathname, search } = useLocation();
+  useAppLinks();
   const nav = [
     { to: "/", label: "Feed", icon: Home, end: true },
     { to: "/messages", label: "Messages", icon: Mail, badge: unreadMessages },
@@ -45,7 +67,7 @@ function Layout() {
 
   return (
     <div className="min-h-screen md:flex">
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-ink-200 bg-surface md:flex">
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-ink-200 bg-surface pt-[env(safe-area-inset-top)] md:flex">
         <Link to="/" className="flex h-16 items-center gap-2.5 px-5 font-semibold tracking-tight">
           <img src="/favicon.svg" alt="" className="h-8 w-8" /> Northern Lights
         </Link>
@@ -67,16 +89,18 @@ function Layout() {
         </div>
       </aside>
 
-      <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-ink-200 bg-surface/85 px-4 backdrop-blur-xl md:hidden">
+      <header className="sticky top-0 z-30 border-b border-ink-200 bg-surface/85 pt-[env(safe-area-inset-top)] backdrop-blur-xl md:hidden">
+        <div className="flex h-14 items-center justify-between px-4">
         <Link to="/" className="flex items-center gap-2 font-semibold"><img src="/favicon.svg" alt="" className="h-7 w-7" /> Northern Lights</Link>
         <Link to="/add" className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-500 hover:bg-ink-100" aria-label="Add a site"><Plus size={20} /></Link>
+        </div>
       </header>
 
-      <main className="mx-auto w-full max-w-5xl min-w-0 flex-1 px-4 pt-6 pb-24 sm:px-8 md:py-10">
+      <main className="mx-auto w-full max-w-5xl min-w-0 flex-1 px-4 pt-6 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-8 md:py-10">
         <Outlet />
       </main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-30 flex justify-around border-t border-ink-200 bg-surface/95 py-2 backdrop-blur md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-30 flex justify-around border-t border-ink-200 bg-surface/95 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur md:hidden">
         {nav.map(({ to, label, icon: Icon, end, badge }) => (
           <NavLink key={to} to={to} end={end} className={({ isActive }) => `relative flex flex-col items-center gap-0.5 text-[11px] font-medium ${isActive ? "text-primary-700" : "text-ink-500"}`}>
             <Icon size={20} /> {label}
@@ -95,7 +119,7 @@ export default function HubApp() {
       <Routes>
         <Route element={<Layout />}>
           <Route index element={<HubFeed />} />
-          <Route path="add" element={<AddSite />} />
+          <Route path="add" element={<AddRoute />} />
           <Route path="messages" element={<HubMessages />} />
           <Route path="sites" element={<HubSites />} />
         </Route>

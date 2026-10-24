@@ -1,0 +1,121 @@
+name: iPhone App Store
+
+# Builds, signs and uploads the iPhone app (mobile/ios) to App Store Connect,
+# where it lands in TestFlight. Runs for app tags (app-v1.2.3) and by hand.
+# Adapted from yeixio/prox .github/workflows/ios-appstore.yml; the signing
+# secrets are the yeixio organization ones (docs/mobile.md).
+on:
+  push:
+    tags: ["app-v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version, like 1.0.0"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  upload:
+    runs-on: ${{ fromJSON(vars.MAC_RUNS_ON || '"macos-26"') }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select the newest Xcode
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          selected="" best=""
+          for app in /Applications/Xcode*.app; do
+            [ -d "$app/Contents/Developer" ] || continue
+            v="$(defaults read "$app/Contents/Info" CFBundleShortVersionString 2>/dev/null)" || continue
+            if [ -z "$best" ] || [ "$(printf '%s\n%s\n' "$best" "$v" | sort -V | tail -1)" = "$v" ]; then
+              best="$v" selected="$app"
+            fi
+          done
+          [ -n "$selected" ] || { echo "No Xcode in /Applications." >&2; exit 1; }
+          if [ "$RUNNER_ENVIRONMENT" = github-hosted ]; then sudo xcode-select -s "$selected/Contents/Developer"; fi
+          echo "DEVELOPER_DIR=$selected/Contents/Developer" >> "$GITHUB_ENV"
+          export DEVELOPER_DIR="$selected/Contents/Developer"
+          xcodebuild -version
+          sdk="$(xcrun --sdk iphoneos --show-sdk-version)"
+          echo "iPhoneOS SDK $sdk"
+          if [ "${sdk%%.*}" -lt 26 ]; then
+            echo "App Store Connect requires the iOS 26 SDK or later." >&2
+            exit 1
+          fi
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - name: Sign the iOS app and upload
+        env:
+          VERSION: ${{ inputs.version || github.ref_name }}
+          APPSTORE_DISTRIBUTION_P12_BASE64: ${{ secrets.APPSTORE_DISTRIBUTION_P12_BASE64 }}
+          APPSTORE_DISTRIBUTION_PASSWORD: ${{ secrets.APPSTORE_DISTRIBUTION_PASSWORD }}
+          IOS_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}
+          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          ASC_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
+          ASC_API_KEY_P8_BASE64: ${{ secrets.ASC_API_KEY_P8_BASE64 }}
+        run: |
+          set -euo pipefail
+          export VERSION="${VERSION#app-}"
+          export VERSION="${VERSION#v}"
+          missing=0
+          for name in APPSTORE_DISTRIBUTION_P12_BASE64 APPSTORE_DISTRIBUTION_PASSWORD ASC_API_KEY_ID ASC_API_ISSUER_ID ASC_API_KEY_P8_BASE64; do
+            if [ -z "${!name:-}" ]; then
+              echo "iOS App Store secret not set: $name"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "::error title=Not uploaded::The yeixio App Store secrets aren't available to this repository (docs/mobile.md)."
+            exit 1
+          fi
+
+          CERT="$RUNNER_TEMP/distribution.p12"
+          PROFILE="$RUNNER_TEMP/northern-lights.mobileprovision"
+          KEYCHAIN="$RUNNER_TEMP/ios-appstore.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -base64 32)"
+          echo "$APPSTORE_DISTRIBUTION_P12_BASE64" | base64 --decode > "$CERT"
+          echo "$ASC_API_KEY_P8_BASE64" | base64 --decode > "$RUNNER_TEMP/AuthKey.p8"
+          if [ -n "${IOS_PROVISION_PROFILE_BASE64:-}" ]; then
+            echo "$IOS_PROVISION_PROFILE_BASE64" | base64 --decode > "$PROFILE"
+          else
+            # No per-app secret: find or make the profile with the team's API key.
+            ASC_API_KEY="$RUNNER_TEMP/AuthKey.p8" DISTRIBUTION_P12="$CERT" DISTRIBUTION_P12_PASSWORD="$APPSTORE_DISTRIBUTION_PASSWORD" \
+              python3 mobile/scripts/fetch-ios-profile.py "$PROFILE"
+          fi
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$CERT" -P "$APPSTORE_DISTRIBUTION_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          # Add the build keychain to the search list, keeping the ones already there.
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | xargs)
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          # Sign with the certificate just imported, by its SHA-1, not its name,
+          # in case another "Apple Distribution" certificate is on the Mac.
+          APPSTORE_DISTRIBUTION_IDENTITY="$(security find-identity -v -p codesigning "$KEYCHAIN" | awk '/Apple Distribution/ {print $2; exit}')"
+          if [ -z "$APPSTORE_DISTRIBUTION_IDENTITY" ]; then
+            echo "::error::No Apple Distribution identity in the imported certificate."
+            exit 1
+          fi
+          export APPSTORE_DISTRIBUTION_IDENTITY
+          export IOS_PROVISION_PROFILE="$PROFILE"
+          # The time, so builds from manual and tag runs always increase.
+          export IOS_BUILD_NUMBER="$(date -u +%Y%m%d%H%M)"
+          export ASC_API_KEY="$RUNNER_TEMP/AuthKey.p8"
+          export UPLOAD_APPSTORE=1
+          ./mobile/scripts/package-ios.sh
+      - name: Remove the iOS signing keychain
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/ios-appstore.keychain-db" || true
+          rm -f "$RUNNER_TEMP/distribution.p12" "$RUNNER_TEMP/northern-lights.mobileprovision" "$RUNNER_TEMP/AuthKey.p8"

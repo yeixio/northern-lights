@@ -1,0 +1,78 @@
+name: Mobile
+
+# Checks that the iPhone and Android apps (capacitor.config.ts, mobile/) still
+# build, unsigned, on every pull request and push to main. Store builds are
+# ios-appstore.yml and android-play.yml.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+          cache-dependency-path: mobile/android/**/*.gradle*
+      - run: npm ci
+      - run: npm run build:hub
+      - run: npx cap sync android
+      - name: Build a debug APK
+        working-directory: mobile/android
+        run: ./gradlew assembleDebug --no-daemon
+      - name: The link scheme and app id made it into the build
+        run: |
+          set -euo pipefail
+          apk=mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          aapt="$(ls "$ANDROID_HOME"/build-tools/*/aapt | sort -V | tail -1)"
+          "$aapt" dump badging "$apk" | grep "package: name='com.yeix.northernlights'"
+          "$aapt" dump xmltree "$apk" AndroidManifest.xml | grep -q '"northernlights"'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: northern-lights-debug-apk
+          path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 7
+
+  ios:
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build:hub
+      - run: npx cap sync ios
+      - name: Build for the simulator
+        run: |
+          xcodebuild \
+            -project mobile/ios/App/App.xcodeproj \
+            -scheme App \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination "generic/platform=iOS Simulator" \
+            -derivedDataPath "$RUNNER_TEMP/dd" \
+            -skipPackagePluginValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            build

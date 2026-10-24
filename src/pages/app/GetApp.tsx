@@ -75,8 +75,8 @@ export default function GetApp() {
       <div>
         <h1 className="text-2xl font-semibold">Get the app</h1>
         <p className="text-ink-600">
-          The Northern Lights app shows this site together with any other Northern Lights sites you belong to, in one feed.
-          Scan a code here to add this site to it without typing a password.
+          The Northern Lights app for iPhone and Android shows this site together with any other Northern Lights sites you
+          belong to, in one feed. Scan a code here to add this site to it without typing a password.
         </p>
       </div>
 
@@ -90,8 +90,8 @@ export default function GetApp() {
               dangerouslySetInnerHTML={{ __html: renderSVG(pairing.link) }}
             />
             <p className="text-sm text-ink-600">
-              Open the Northern Lights app, tap <strong>Add a site</strong> and scan this code.
-              It works once and expires in {Math.floor(left / 60)}:{String(left % 60).padStart(2, "0")}.
+              Point your phone's camera at this code. If the app isn't installed yet, the link shows where to get it.
+              The code works once and expires in {Math.floor(left / 60)}:{String(left % 60).padStart(2, "0")}.
             </p>
             <a className="text-sm font-medium text-primary-700 hover:underline" href={pairing.link}>
               On this phone? Open the app instead
@@ -101,7 +101,7 @@ export default function GetApp() {
           <div className="flex items-center gap-4">
             <Smartphone className="shrink-0 text-ink-400" size={32} />
             <p className="flex-1 text-sm text-ink-600">
-              {connected ? "Your app is connected. You can close this page." : "Show a code to connect a phone, tablet or computer."}
+              {connected ? "Your app is connected. You can close this page." : "Show a code to connect a phone or tablet."}
             </p>
             <button className="btn-primary" onClick={showCode}>{connected ? "Connect another" : "Show a code"}</button>
           </div>

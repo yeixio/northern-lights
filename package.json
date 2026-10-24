@@ -13,7 +13,7 @@
     "build": "tsc -b && vite build && tsc -p server/tsconfig.json",
     "build:hub": "vite build --config vite.hub.config.ts",
     "start": "node dist/server/index.js",
-    "test": "tsx --test server/app.test.ts src/lib/facebook.test.ts src/hub/merge.test.ts",
+    "test": "tsx --test server/app.test.ts src/lib/facebook.test.ts src/hub/merge.test.ts src/hub/links.test.ts",
     "typecheck": "tsc -b && tsc -p server/tsconfig.json --noEmit && tsc -p scripts/tsconfig.json",
     "demo": "npm run build && tsx scripts/demo/seed.ts --serve",
     "demo:seed": "tsx scripts/demo/seed.ts",
@@ -21,6 +21,9 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1153.0",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/preferences": "^8.0.1",
     "@hono/node-server": "^2.1.5",
     "better-sqlite3": "^13.0.3",
     "hono": "^4.13.13",
@@ -35,6 +38,9 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/cli": "^8.5.3",
+    "@capacitor/ios": "^8.5.3",
     "@tailwindcss/vite": "^4.3.3",
     "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^26.6.5",

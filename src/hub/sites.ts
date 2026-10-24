@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import type { Author, Profile } from "../lib/types";
+import { keep } from "./native";
 
 // The Northern Lights app keeps one sign-in per site and talks to each site's
 // own API directly (docs/app-api.md). This file holds that list of sites and
@@ -45,6 +46,7 @@ const listeners = new Set<() => void>();
 
 function write(next: Site[]) {
   sites = next;
+  keep(KEY, JSON.stringify(next));
   try {
     localStorage.setItem(KEY, JSON.stringify(next));
   } catch {

@@ -5,3 +5,6 @@ data
 .git
 demo-data
 rclone
+mobile/android
+mobile/ios
+mobile/assets

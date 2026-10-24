@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="description" content="Every Northern Lights site you belong to, in one app for iPhone and Android." />
+    <title>Northern Lights app</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f7f8fa;
+        --card: #ffffff;
+        --ink: #0f172a;
+        --muted: #475569;
+        --line: #e2e8f0;
+        --primary: #059669;
+        --on-primary: #ffffff;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0b1220;
+          --card: #111a2e;
+          --ink: #e2e8f0;
+          --muted: #94a3b8;
+          --line: #1e293b;
+          --primary: #34d399;
+          --on-primary: #052e1f;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px 16px;
+        background: var(--bg);
+        color: var(--ink);
+        font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      }
+      main { width: 100%; max-width: 420px; text-align: center; }
+      .logo { width: 72px; height: 72px; }
+      h1 { font-size: 1.6rem; margin: 16px 0 4px; }
+      p { color: var(--muted); margin: 0 0 16px; }
+      .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px; margin-top: 24px; }
+      .card p:last-child { margin-bottom: 0; }
+      .btn {
+        display: block;
+        padding: 12px 16px;
+        margin: 10px 0;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        color: var(--ink);
+        text-decoration: none;
+        font-weight: 600;
+      }
+      .btn.primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+      .btn[aria-disabled="true"] { opacity: 0.55; pointer-events: none; }
+      .small { font-size: 0.875rem; }
+      [hidden] { display: none !important; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img class="logo" src="/favicon.svg" alt="" />
+      <h1>Northern Lights</h1>
+      <p>Every Northern Lights site you belong to, in one app: one feed, one inbox.</p>
+
+      <section class="card" id="link" hidden>
+        <p><strong>Got the app?</strong> Open it to add this site and sign in.</p>
+        <a class="btn primary" id="open" href="#">Open in Northern Lights</a>
+        <p class="small">Codes from <strong>Get the app</strong> work for 5 minutes. If yours runs out while you install the app, show a new one on the site and scan it again.</p>
+      </section>
+
+      <section class="card">
+        <p id="get">Get the app, then on any Northern Lights site open the menu, choose <strong>Get the app</strong> and scan the code with your phone's camera.</p>
+        <a class="btn" id="ios" href="#">Download on the App Store</a>
+        <a class="btn" id="android" href="https://play.google.com/store/apps/details?id=com.yeix.northernlights">Get it on Google Play</a>
+        <p class="small">To use a site on a computer, go to the site's own address in your browser.</p>
+      </section>
+    </main>
+    <script>
+      // The App Store link, once the app is listed (https://apps.apple.com/app/id…).
+      var APP_STORE = "";
+      var PLAY_STORE = "https://play.google.com/store/apps/details?id=com.yeix.northernlights";
+
+      var ios = document.getElementById("ios");
+      if (APP_STORE) ios.href = APP_STORE;
+      else {
+        ios.textContent = "App Store: coming soon";
+        ios.setAttribute("aria-disabled", "true");
+      }
+
+      // A QR code or "Open the app" link from a site: /add#instance=…&code=… or #invite=…
+      var params = location.hash.slice(1);
+      if (location.pathname === "/add" && /(^|&)(code|invite)=/.test(params)) {
+        var open = document.getElementById("open");
+        if (/Android/i.test(navigator.userAgent)) {
+          // Opens the app, or Google Play when it isn't installed.
+          open.href = "intent://add?" + params + "#Intent;scheme=northernlights;package=com.yeix.northernlights;S.browser_fallback_url=" +
+            encodeURIComponent(PLAY_STORE) + ";end";
+        } else {
+          open.href = "northernlights://add?" + params;
+        }
+        document.getElementById("link").hidden = false;
+        document.getElementById("get").textContent = "Don't have the app yet? Get it here, then come back to this page or scan the code again.";
+      }
+    </script>
+  </body>
+</html>

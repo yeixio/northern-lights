@@ -66,10 +66,10 @@ made up, and the photos are painted in code. Run it yourself with
   "Download your information" export, with captions and original dates
 - Admin tools: suspend, restore, promote, or remove members, and make reset links
 - Uploaded photos are private to members unless they're used on the public page
-- The Northern Lights app at [app.yeix.io](https://app.yeix.io) shows every
-  site you belong to in one feed and one inbox. Members connect it by scanning
-  a QR code on **Get the app**, and can sign devices out there. See
-  [docs/app.md](docs/app.md).
+- The Northern Lights app for iPhone and Android shows every site you belong
+  to in one feed and one inbox. Members connect it by scanning a QR code on
+  **Get the app**, and can sign devices out there. See
+  [docs/app.md](docs/app.md) and [docs/mobile.md](docs/mobile.md).
 
 ## Quick start
 
@@ -255,7 +255,7 @@ All settings are environment variables (or lines in `.env`). Everything is optio
 | `SESSION_DAYS` | `30` | How long a login lasts |
 | `INVITE_DAYS` | `14` | How long an invite link works |
 | `DEVICE_DAYS` | `180` | How long the Northern Lights app stays signed in after it was last used |
-| `APP_LINK_URL` | `https://app.yeix.io/add` | Where **Get the app** QR codes point |
+| `APP_LINK_URL` | `https://app.yeix.io/add` | Where **Get the app** QR codes point (a page that opens the app) |
 | `S3_PREFIX` | none | A folder for this site's files, for hosts that keep many sites in one bucket |
 | `SETUP_TOKEN` | off | For hosted sites: only the link `/setup?token=<SETUP_TOKEN>` can create the first admin, so nobody else can claim a new site |
 | `STORAGE_QUOTA_MB` | no limit | Total size of all uploads; new uploads are refused once it's reached |
@@ -343,7 +343,8 @@ server/
   routes/          auth, public, posts, messages, albums, files, invites, admin, live updates, app
   signing.ts       signed photo links for the app
   app.test.ts      end-to-end API tests
-hub/               the Northern Lights app's page, icon, offline support and nginx image (built with vite.hub.config.ts)
+hub/               the Northern Lights app's page and icon (built with vite.hub.config.ts)
+mobile/            the iPhone and Android projects, store scripts, and app.yeix.io (capacitor.config.ts)
 src/
   hub/             the Northern Lights app: sites, merged feed, messages
   auth/            session context, route guards

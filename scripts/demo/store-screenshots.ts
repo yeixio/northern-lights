@@ -29,7 +29,7 @@ const SITES = [
 const DEVICES = [
   { out: "packaging/appstore/screenshots/iphone", width: 440, height: 956, scale: 3, top: 62, bottom: 34, bar: "ios" },
   { out: "packaging/appstore/screenshots/ipad", width: 1032, height: 1376, scale: 2, top: 24, bottom: 20, bar: "ios" },
-  { out: "packaging/googleplay/images/phone", width: 360, height: 720, scale: 3, top: 24, bottom: 16, bar: "android" },
+  { out: "packaging/googleplay/images/phone", width: 360, height: 640, scale: 3, top: 24, bottom: 16, bar: "android" },
   { out: "packaging/googleplay/images/tablet-7", width: 600, height: 960, scale: 2, top: 24, bottom: 16, bar: "android" },
   { out: "packaging/googleplay/images/tablet-10", width: 800, height: 1280, scale: 2, top: 24, bottom: 16, bar: "android" },
 ] as const;

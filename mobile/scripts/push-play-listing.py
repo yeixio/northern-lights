@@ -81,8 +81,9 @@ def check(listing: dict) -> list[str]:
                 problems.append(f"{path.relative_to(ROOT)}: {width}x{height}; Play wants {IMAGES[kind][0]}x{IMAGES[kind][1]}")
             if kind in SCREENSHOTS:
                 low, high = SCREENSHOTS[kind]
-                if not (low <= width <= high and low <= height <= high) or max(width, height) > 2 * min(width, height):
-                    problems.append(f"{path.relative_to(ROOT)}: {width}x{height}; Play wants sides of {low}–{high} px, at most 2:1")
+                # Play's upload fails with a bare 500 at exactly 2:1 (1080x2160), so keep under it.
+                if not (low <= width <= high and low <= height <= high) or max(width, height) >= 2 * min(width, height):
+                    problems.append(f"{path.relative_to(ROOT)}: {width}x{height}; Play wants sides of {low}–{high} px, under 2:1")
         if kind in SCREENSHOTS and not 2 <= len(paths) <= 8:
             problems.append(f"images.{kind}: {len(paths)} screenshots; Play wants 2 to 8")
     return problems

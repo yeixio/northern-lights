@@ -25,6 +25,7 @@ import json
 import os
 import struct
 import sys
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -81,8 +82,9 @@ def check(listing: dict) -> list[str]:
                 problems.append(f"{path.relative_to(ROOT)}: {width}x{height}; Play wants {IMAGES[kind][0]}x{IMAGES[kind][1]}")
             if kind in SCREENSHOTS:
                 low, high = SCREENSHOTS[kind]
-                if not (low <= width <= high and low <= height <= high) or max(width, height) > 2 * min(width, height):
-                    problems.append(f"{path.relative_to(ROOT)}: {width}x{height}; Play wants sides of {low}–{high} px, at most 2:1")
+                # Play's upload fails with a bare 500 at exactly 2:1 (1080x2160), so keep under it.
+                if not (low <= width <= high and low <= height <= high) or max(width, height) >= 2 * min(width, height):
+                    problems.append(f"{path.relative_to(ROOT)}: {width}x{height}; Play wants sides of {low}–{high} px, under 2:1")
         if kind in SCREENSHOTS and not 2 <= len(paths) <= 8:
             problems.append(f"images.{kind}: {len(paths)} screenshots; Play wants 2 to 8")
     return problems
@@ -117,14 +119,23 @@ def push(listing: dict) -> None:
     for kind, relative in listing.get("images", {}).items():
         paths = sorted((FOLDER / relative).glob("*.png")) if kind in SCREENSHOTS else [FOLDER / relative]
         push_play.call(token, "DELETE", f"{base}/{edit}/listings/{language}/{kind}")
-        for path in paths:
-            push_play.call(
-                token,
-                "POST",
-                f"{upload}/{edit}/listings/{language}/{kind}?uploadType=media",
-                data=path.read_bytes(),
-                content_type="image/png",
-            )
+        for number, path in enumerate(paths, 1):
+            # Play's image upload answers a bare 500 now and then, partway through a set.
+            for attempt in range(5):
+                try:
+                    push_play.call(
+                        token,
+                        "POST",
+                        f"{upload}/{edit}/listings/{language}/{kind}?uploadType=media",
+                        data=path.read_bytes(),
+                        content_type="image/png",
+                    )
+                    break
+                except push_play.PlayError as error:
+                    if error.status < 500 or attempt == 4:
+                        raise push_play.PlayError(error.status, f"{path.relative_to(ROOT)} ({kind} {number} of {len(paths)}): {error.detail}") from error
+                    print(f"{path.relative_to(ROOT)}: Play answered {error.status}, retrying")
+                    time.sleep(2 ** (attempt + 1))
         print(f"Graphics {kind}: {len(paths)} uploaded")
 
     push_play.call(token, "POST", f"{base}/{edit}:commit")

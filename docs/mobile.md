@@ -94,7 +94,9 @@ bundle id and makes or finds its App Store profile with the API key
 
 1. The first iOS run registers the bundle id `com.yeix.northernlights`. Then
    create the app: **Apps → + → New App**, platform iOS, name
-   "Northern Lights", that bundle id, SKU `northern-lights`.
+   "Northern Lights Social", that bundle id, SKU `northern-lights`. That is
+   the store name; the home screen still says "Northern Lights" (the plain
+   name was taken).
 2. **App Privacy:** Data Not Collected. The app sends what people post only to
    the site they post on, run by that site's owner; yeix collects nothing.
    Privacy policy URL: `https://app.yeix.io/privacy`.
@@ -106,7 +108,7 @@ bundle id and makes or finds its App Store profile with the API key
 
 **Google Play Console**
 
-1. **Create app**, "Northern Lights", package `com.yeix.northernlights`.
+1. **Create app**, "Northern Lights Social", package `com.yeix.northernlights`.
 2. Play's API can't upload an app's first bundle. Run **Google Play** once:
    the upload fails with "Package not found", but the signed bundle is
    attached to the run. Upload it by hand under **Testing → Internal testing

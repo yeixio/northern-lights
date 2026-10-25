@@ -25,6 +25,7 @@ import json
 import os
 import struct
 import sys
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -119,16 +120,22 @@ def push(listing: dict) -> None:
         paths = sorted((FOLDER / relative).glob("*.png")) if kind in SCREENSHOTS else [FOLDER / relative]
         push_play.call(token, "DELETE", f"{base}/{edit}/listings/{language}/{kind}")
         for number, path in enumerate(paths, 1):
-            try:
-                push_play.call(
-                    token,
-                    "POST",
-                    f"{upload}/{edit}/listings/{language}/{kind}?uploadType=media",
-                    data=path.read_bytes(),
-                    content_type="image/png",
-                )
-            except push_play.PlayError as error:
-                raise push_play.PlayError(error.status, f"{path.relative_to(ROOT)} ({kind} {number} of {len(paths)}): {error.detail}") from error
+            # Play's image upload answers a bare 500 now and then, partway through a set.
+            for attempt in range(5):
+                try:
+                    push_play.call(
+                        token,
+                        "POST",
+                        f"{upload}/{edit}/listings/{language}/{kind}?uploadType=media",
+                        data=path.read_bytes(),
+                        content_type="image/png",
+                    )
+                    break
+                except push_play.PlayError as error:
+                    if error.status < 500 or attempt == 4:
+                        raise push_play.PlayError(error.status, f"{path.relative_to(ROOT)} ({kind} {number} of {len(paths)}): {error.detail}") from error
+                    print(f"{path.relative_to(ROOT)}: Play answered {error.status}, retrying")
+                    time.sleep(2 ** (attempt + 1))
         print(f"Graphics {kind}: {len(paths)} uploaded")
 
     push_play.call(token, "POST", f"{base}/{edit}:commit")

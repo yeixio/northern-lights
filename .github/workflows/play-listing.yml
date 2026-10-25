@@ -1,0 +1,52 @@
+name: Google Play listing
+
+# Keeps the Google Play listing in packaging/googleplay/: title,
+# descriptions, contact details, icon, feature graphic and the phone and
+# tablet screenshots. Pull requests that change it check it; merging to main
+# pushes it to Play, as does running this by hand. Play reviews listing
+# changes before they show.
+# Adapted from yeixio/prox .github/workflows/play-listing.yml.
+on:
+  pull_request:
+    paths:
+      - "packaging/googleplay/**"
+      - "mobile/scripts/push-play-listing.py"
+      - ".github/workflows/play-listing.yml"
+  push:
+    branches: [main]
+    paths:
+      - "packaging/googleplay/**"
+      - "mobile/scripts/push-play-listing.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: play-listing-${{ github.event.pull_request.number || 'main' }}
+  cancel-in-progress: false
+
+jobs:
+  listing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check the listing
+        run: python3 mobile/scripts/push-play-listing.py --check
+      - name: Push the listing to Play
+        if: github.event_name != 'pull_request'
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON_CONTENT: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          set -euo pipefail
+          if [ -z "$PLAY_SERVICE_ACCOUNT_JSON_CONTENT" ]; then
+            echo "::notice title=Not pushed::PLAY_SERVICE_ACCOUNT_JSON isn't available to this repository; the listing was checked but not pushed."
+            exit 0
+          fi
+          export PLAY_SERVICE_ACCOUNT_JSON="$RUNNER_TEMP/play.json"
+          printf '%s' "$PLAY_SERVICE_ACCOUNT_JSON_CONTENT" > "$PLAY_SERVICE_ACCOUNT_JSON"
+          python3 mobile/scripts/push-play-listing.py
+      - name: Remove the service account key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/play.json"

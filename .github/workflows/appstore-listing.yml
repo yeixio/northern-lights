@@ -1,0 +1,71 @@
+name: App Store listing
+
+# Pushes packaging/appstore/ to App Store Connect without building anything:
+# name, subtitle, description, keywords, links, categories, What's New, the
+# App Review notes and demo account, and the iPhone and iPad screenshots in
+# packaging/appstore/screenshots/. The iPhone App Store workflow pushes them
+# with each build; run this to fix the listing between releases. Pull
+# requests that change it check it against Apple's limits.
+# Adapted from yeixio/prox .github/workflows/appstore-listing.yml.
+on:
+  pull_request:
+    paths:
+      - "packaging/appstore/**"
+      - "mobile/scripts/push-appstore-metadata.py"
+      - "mobile/scripts/push-screenshots.py"
+      - ".github/workflows/appstore-listing.yml"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "App Store version to update, such as 1.0.0. Empty uses metadata-ios.json's."
+        required: false
+        type: string
+      screenshots:
+        description: "Also replace the screenshots"
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: appstore-listing-${{ github.event.pull_request.number || 'main' }}
+  cancel-in-progress: false
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check the listing
+        run: |
+          python3 mobile/scripts/push-appstore-metadata.py --check
+          python3 mobile/scripts/push-screenshots.py --check
+      - name: Push the listing
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          APPSTORE_VERSION: ${{ inputs.version }}
+          SCREENSHOTS: ${{ inputs.screenshots }}
+          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          ASC_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
+          ASC_API_KEY_P8_BASE64: ${{ secrets.ASC_API_KEY_P8_BASE64 }}
+          APP_REVIEW_SITE: ${{ secrets.APP_REVIEW_SITE }}
+          APP_REVIEW_EMAIL: ${{ secrets.APP_REVIEW_EMAIL }}
+          APP_REVIEW_PASSWORD: ${{ secrets.APP_REVIEW_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "$ASC_API_KEY_ID" ] || [ -z "$ASC_API_ISSUER_ID" ] || [ -z "$ASC_API_KEY_P8_BASE64" ]; then
+            echo "::error title=Not pushed::The ASC_API_* secrets aren't available to this repository (docs/mobile.md)."
+            exit 1
+          fi
+          export ASC_API_KEY="$RUNNER_TEMP/AuthKey.p8"
+          echo "$ASC_API_KEY_P8_BASE64" | base64 --decode > "$ASC_API_KEY"
+          python3 mobile/scripts/push-appstore-metadata.py
+          if [ "$SCREENSHOTS" = "true" ]; then
+            python3 mobile/scripts/push-screenshots.py
+          fi
+      - name: Remove the API key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/AuthKey.p8"

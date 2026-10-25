@@ -1,0 +1,20 @@
+{
+  "packageName": "com.yeix.northernlights",
+  "defaultLanguage": "en-US",
+  "contactEmail": "info@yeix.io",
+  "contactWebsite": "https://app.yeix.io",
+  "images": {
+    "icon": "images/icon.png",
+    "featureGraphic": "images/feature-graphic.png",
+    "phoneScreenshots": "images/phone",
+    "sevenInchScreenshots": "images/tablet-7",
+    "tenInchScreenshots": "images/tablet-10"
+  },
+  "listings": {
+    "en-US": {
+      "title": "Northern Lights Social",
+      "shortDescription": "Every Northern Lights site you belong to, in one private feed and one inbox.",
+      "fullDescription": "Northern Lights Social brings every Northern Lights site you belong to into one app: your family's site, your club, your group of old friends. One feed, one inbox, and a badge when something's new.\n\nNorthern Lights is a private, invite-only place that a family or group runs for itself. Each site belongs to the people who run it. This app is how you keep up with all of yours from your phone.\n\nOne feed\n• Posts from all your sites together, newest first, each marked with the site it came from\n• Like and comment, and see what everyone said\n• Post with photos to whichever site you choose\n\nOne inbox\n• Messages from every site in one list\n• Each conversation stays on its own site, so people only see what you send them there\n\nEasy to join\n• On a site, open the menu, choose Get the app and scan the code with your phone's camera: you're signed in without typing anything\n• Or type the site's address and sign in, or open an invite link\n• Add as many sites as you like, and remove one whenever you want\n\nPrivate by design\n• The app talks straight to each site. Your posts, photos and messages go only to the site you share them on\n• No ads, no tracking and no account with us: you sign in to each site as you would on its website\n• Take the app's access away from a site at any time, from that site's Get the app page\n\nDon't have a site yet? Northern Lights is free and open source: run it on your own computer or server, or ask yeix.io to host one for you."
+    }
+  }
+}

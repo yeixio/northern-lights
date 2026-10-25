@@ -51,7 +51,7 @@ export default function HubMessages() {
   }
 
   const list = (
-    <section className={`card divide-y divide-ink-100 overflow-hidden ${open ? "hidden md:block" : ""}`}>
+    <section className={`card divide-y divide-ink-100 overflow-hidden ${open ? "hidden lg:block" : ""}`}>
       <div className="flex items-center justify-between p-4">
         <h1 className="font-semibold">Messages</h1>
         <button className="btn-ghost px-2" onClick={() => setPicking(true)} aria-label="New message"><PenSquare size={18} /></button>
@@ -77,12 +77,12 @@ export default function HubMessages() {
   );
 
   return (
-    <div className="mx-auto grid max-w-5xl gap-4 md:grid-cols-[20rem_1fr]">
+    <div className="mx-auto grid max-w-5xl gap-4 lg:grid-cols-[20rem_minmax(0,1fr)]">
       {list}
       {open && site && person ? (
         <section className="card flex h-[calc(100dvh-10rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] flex-col">
           <header className="flex items-center gap-3 border-b border-ink-100 p-4">
-            <button className="btn-ghost px-2 md:hidden" onClick={() => navigate("/messages")} aria-label="Back"><ArrowLeft size={18} /></button>
+            <button className="btn-ghost px-2 lg:hidden" onClick={() => navigate("/messages")} aria-label="Back"><ArrowLeft size={18} /></button>
             <Avatar profile={person} size="sm" />
             <div className="min-w-0">
               <div className="truncate font-semibold">{displayName(person)}</div>
@@ -107,7 +107,7 @@ export default function HubMessages() {
           {error && <p className="px-3 pb-3 text-sm text-rose-600">{error}</p>}
         </section>
       ) : (
-        <section className="card hidden items-center justify-center p-12 text-ink-500 md:flex">Pick a conversation</section>
+        <section className="card hidden items-center justify-center p-12 text-ink-500 lg:flex">Pick a conversation</section>
       )}
       {picking && (
         <NewMessage

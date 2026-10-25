@@ -1,0 +1,17 @@
+{
+  "locale": "en-US",
+  "version": "1.0.0",
+  "name": "Northern Lights Social",
+  "subtitle": "Family & group sites, one feed",
+  "primaryCategory": "SOCIAL_NETWORKING",
+  "secondaryCategory": "LIFESTYLE",
+  "copyright": "2026 YEIXIO LLC",
+  "supportUrl": "https://app.yeix.io",
+  "marketingUrl": "https://github.com/yeixio/northern-lights",
+  "privacyPolicyUrl": "https://app.yeix.io/privacy",
+  "promotionalText": "One app for every Northern Lights site you belong to: your family, your club, your friends. One feed, one inbox, and nothing shared beyond the site you post on.",
+  "keywords": "family,private,group,club,friends,photos,albums,messages,invite only,self-hosted,community",
+  "whatsNew": "The first version of Northern Lights Social: every Northern Lights site you belong to, in one feed and one inbox.",
+  "description": "Northern Lights Social brings every Northern Lights site you belong to into one app: your family's site, your club, your group of old friends. One feed, one inbox, and a badge when something's new.\n\nNorthern Lights is a private, invite-only place that a family or group runs for itself. Each site belongs to the people who run it. This app is how you keep up with all of yours from your phone.\n\nOne feed\n• Posts from all your sites together, newest first, each marked with the site it came from\n• Like and comment, and see what everyone said\n• Post with photos to whichever site you choose\n\nOne inbox\n• Messages from every site in one list\n• Each conversation stays on its own site, so people only see what you send them there\n\nEasy to join\n• On a site, open the menu, choose Get the app and scan the code with your phone's camera: you're signed in without typing anything\n• Or type the site's address and sign in, or open an invite link\n• Add as many sites as you like, and remove one whenever you want\n\nPrivate by design\n• The app talks straight to each site. Your posts, photos and messages go only to the site you share them on\n• No ads, no tracking and no account with us: you sign in to each site as you would on its website\n• Take the app's access away from a site at any time, from that site's Get the app page\n\nDon't have a site yet? Northern Lights is free and open source: run it on your own computer or server, or ask yeix.io to host one for you.\n\nPrivacy Policy: https://app.yeix.io/privacy",
+  "reviewNotes": "Northern Lights Social is the phone app for Northern Lights, an open-source, self-hosted private social site that a family or group runs for itself (https://github.com/yeixio/northern-lights). The app has no server of its own: it signs in to each site the person belongs to and shows them together.\n\nTo try it:\n1. Open the app. It shows Add a site.\n2. Type {site} and tap Continue.\n3. Sign in with the demo account in the sign-in information above.\n4. The Feed shows the site's posts. Like or comment on one, or write a post (with a photo if you like) and tap Post.\n5. Messages lists the account's conversations; open one and send a message.\n6. Sites lists the added sites; Remove signs the app out of that site.\n\nThe demo site's people and content are made up.\n\nUser-generated content (Guideline 1.2): there is no public content. Every site is private and invite-only, and its admins moderate it: they can delete any post or comment, and suspend or remove a member. Members can delete their own posts and comments. Contact: info@yeix.io.\n\nPrivacy: no analytics, ads or tracking SDKs, and no yeix account. Privacy policy: https://app.yeix.io/privacy"
+}

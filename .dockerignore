@@ -8,3 +8,5 @@ rclone
 mobile/android
 mobile/ios
 mobile/assets
+packaging/appstore
+packaging/googleplay

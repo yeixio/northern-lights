@@ -376,6 +376,7 @@ describe("the Northern Lights app", () => {
     assert.equal(sum.new_likes_on_my_posts, 1);
     assert.equal(sum.new_comments_on_my_posts, 1);
     assert.ok(sum.unread_messages >= 1);
+    assert.equal(sum.user.id, friendId);
   });
 
   test("the feed cursor never skips posts that share a timestamp", async () => {

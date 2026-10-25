@@ -6,6 +6,7 @@ import { parseJson, type themeSchema } from "../appearance.js";
 import { config } from "../config.js";
 import { now, type DB } from "../db/index.js";
 import { profile } from "../serialize.js";
+import { signFileUrls } from "../signing.js";
 import { appUrl } from "../url.js";
 import { acceptInvite, acceptSchema, checkLogin, loginSchema } from "./auth.js";
 
@@ -42,7 +43,8 @@ async function signedIn(c: Context<AppEnv>, userId: string, name: string) {
   const db = c.get("db");
   const token = await startDeviceSession(db, userId, name);
   const user = await db.selectFrom("users").selectAll().where("id", "=", userId).executeTakeFirstOrThrow();
-  return c.json({ token, user: profile(user), instance: await instanceInfo(c) }, 201);
+  // Signed by hand: this request has no device token yet, so the app middleware doesn't sign it.
+  return c.json(await signFileUrls(db, { token, user: profile(user), instance: await instanceInfo(c) }), 201);
 }
 
 async function devices(db: DB, userId: string, current: string | null) {
@@ -118,6 +120,8 @@ export const appRoutes = new Hono<AppEnv>()
       .where("reactions.created_at", ">", since).executeTakeFirst();
     return c.json({
       since,
+      // The person's own profile, so the app's copy (and its signed photo link) stays current.
+      user: profile(user),
       unread_messages: count(unread),
       new_posts: count(posts),
       new_comments_on_my_posts: count(comments),

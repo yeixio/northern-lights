@@ -50,7 +50,8 @@ git tag app-v1.0.0 && git push origin app-v1.0.0
 
 - **iPhone App Store** (`ios-appstore.yml`) archives and signs the app on a
   macOS runner and uploads it to App Store Connect, where it shows up in
-  TestFlight after Apple processes it.
+  TestFlight after Apple processes it. It then pushes the store listing and
+  screenshots to that version (below).
 - **Google Play** (`android-play.yml`) builds a signed App Bundle and uploads
   it to Play's internal testing track. The bundle is also attached to the run.
 
@@ -58,6 +59,44 @@ Both can also be run by hand from the Actions tab with a version. Build
 numbers come from the time, so every build is higher than the last. Moving a
 build from TestFlight or internal testing to the public store is done by hand
 in each store, on purpose.
+
+## Store listings
+
+The listings live in git, as in yeixio/toskar-apps and yeixio/prox:
+
+| Path | What it is |
+| --- | --- |
+| `packaging/appstore/metadata-ios.json` | App Store name, subtitle, description, keywords, links, categories, What's New, App Review notes |
+| `packaging/appstore/screenshots/` | iPhone 6.9" (1320×2868) and iPad 13" (2064×2752) screenshots |
+| `packaging/googleplay/listing.json` | Play title, short and full description, contact details, which graphics to use |
+| `packaging/googleplay/images/` | Play icon (512), feature graphic (1024×500), phone and 7" and 10" tablet screenshots |
+
+The store name is **Northern Lights Social** (plain "Northern Lights" was
+taken); the name under the icon stays "Northern Lights".
+
+- **App Store listing** (`appstore-listing.yml`) checks the listing on pull
+  requests. Run it by hand to push the text and screenshots to the version
+  being prepared; releases push them too. A version that's with Apple or
+  live keeps its text and screenshots, except the promotional text, which
+  Apple lets change any time.
+- **Google Play listing** (`play-listing.yml`) checks the listing on pull
+  requests and pushes it, with every graphic, when it changes on main or
+  when run by hand. Play reviews listing changes before they show.
+
+The screenshots and Play graphics are made by `npm run store:screenshots`
+(`scripts/demo/store-screenshots.ts`) after `npm run build:hub`. It starts
+two demo sites, the Halvorsen family and the Fjellvik Ski Club, signs the
+app in to both as Nils, and photographs each screen at each store size with
+a phone status bar. Commit what it writes. All the people, posts and photos
+are made up (`scripts/demo/seed.ts`; `DEMO_SITE=club` seeds the club).
+
+App Review needs a site to sign in to. Make a demo site with a member
+account for Apple (its content should be made up, like the demo's),
+then add three **repository** secrets, which the listing push uses for the
+review notes and demo account: `APP_REVIEW_SITE` (its address, such as
+`demo.nl.yeix.io`), `APP_REVIEW_EMAIL` and `APP_REVIEW_PASSWORD`. Without
+them the listing goes up without review details. Give Google's reviewers the
+same account under Play Console's **App access**.
 
 ## Secrets
 

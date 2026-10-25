@@ -17,7 +17,8 @@
     "typecheck": "tsc -b && tsc -p server/tsconfig.json --noEmit && tsc -p scripts/tsconfig.json",
     "demo": "npm run build && tsx scripts/demo/seed.ts --serve",
     "demo:seed": "tsx scripts/demo/seed.ts",
-    "screenshots": "tsx scripts/demo/screenshots.ts"
+    "screenshots": "tsx scripts/demo/screenshots.ts",
+    "store:screenshots": "tsx scripts/demo/store-screenshots.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1153.0",

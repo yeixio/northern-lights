@@ -7,6 +7,9 @@
 //
 // Everyone's password is "northern-lights". Sign in as astrid@example.com (an
 // admin) or any other member below.
+//
+// DEMO_SITE=club seeds a second, smaller site instead: a ski club that Nils
+// (nils@example.com) also belongs to, for the app's combined feed.
 
 import path from "node:path";
 import { SCENES, landscape, type Scene } from "./pictures.js";
@@ -228,9 +231,97 @@ async function seedDemo() {
   console.log(`[demo] Sign in as astrid@example.com (admin) with the password "${DEMO_PASSWORD}".`);
 }
 
+async function seedClub() {
+  const people = [
+    { key: "ingrid", first: "Ingrid", last: "Moe", admin: true, scene: SCENES.winter, bio: "Head coach. Wax expert. Has opinions about klister." },
+    { key: "nils", first: "Nils", last: "Halvorsen", scene: SCENES.winter, bio: "Studying in Trondheim. Will ski for food." },
+    { key: "jonas", first: "Jonas", last: "Strand", scene: SCENES.forest, bio: "Trail crew and the club's unofficial photographer." },
+    { key: "kari", first: "Kari", last: "Nygaard", scene: SCENES.fjord, bio: null },
+    { key: "thea", first: "Thea", last: "Solberg", scene: SCENES.dusk, bio: "Night skiing is the best skiing." },
+  ] as const;
+  const password = await hashPassword(DEMO_PASSWORD);
+  const ids = {} as Record<(typeof people)[number]["key"], string>;
+  for (const [i, p] of people.entries()) {
+    const id = newId();
+    ids[p.key] = id;
+    await db.insertInto("users").values({
+      id, email: `${p.key}@example.com`, password_hash: password, first_name: p.first, last_name: p.last,
+      display_name: null, bio: p.bio, avatar_url: null, is_admin: "admin" in p ? 1 : 0, is_active: 1,
+      preferences: null, created_at: ago(24 * (200 - i * 9)), updated_at: ago(24 * (200 - i * 9)),
+    }).execute();
+    if (p.key !== "kari") {
+      const url = await picture(p.scene, id, [256, 256]);
+      await db.updateTable("users").set({ avatar_url: url }).where("id", "=", id).execute();
+    }
+  }
+
+  type Who = keyof typeof ids;
+  const postDefs: { by: Who; hours: number; text: string; scenes?: (keyof typeof SCENES)[]; likes: Who[]; comments?: [Who, string][] }[] = [
+    {
+      by: "jonas", hours: 4, scenes: ["winter", "forest"],
+      text: "Fresh corduroy on the Fjellvik loop this morning. The lights on the upper trail are fixed, so night skiing is back on.",
+      likes: ["ingrid", "nils", "kari", "thea"],
+      comments: [["thea", "Finally! See you all there at seven."], ["nils", "Saving me a spot in the warming hut?"]],
+    },
+    {
+      by: "ingrid", hours: 30,
+      text: "Saturday's waxing clinic is full, so we're running a second one on Sunday at ten. Bring your own skis and an old towel.",
+      likes: ["jonas", "kari", "nils"],
+      comments: [["kari", "Signed up for Sunday. Do we need our own iron?"], ["ingrid", "Nope, the club has six."]],
+    },
+    {
+      by: "thea", hours: 60, scenes: ["dusk"],
+      text: "Caught the last light from the ridge after practice. Not a bad view for a Tuesday.",
+      likes: ["ingrid", "jonas", "nils", "kari"],
+    },
+  ];
+  for (const p of postDefs) {
+    const id = newId();
+    const media = [];
+    for (const s of p.scenes ?? []) media.push(await picture(SCENES[s], ids[p.by]));
+    await db.insertInto("posts").values({
+      id, user_id: ids[p.by], content: p.text, media_urls: JSON.stringify(media), is_public: 0,
+      created_at: ago(p.hours), updated_at: ago(p.hours),
+    }).execute();
+    for (const [i, who] of p.likes.entries()) {
+      await db.insertInto("reactions")
+        .values({ id: newId(), post_id: id, user_id: ids[who], type: "like", created_at: ago(p.hours - 0.1 * (i + 1)) }).execute();
+    }
+    for (const [i, [who, text]] of (p.comments ?? []).entries()) {
+      await db.insertInto("comments")
+        .values({ id: newId(), post_id: id, user_id: ids[who], content: text, created_at: ago(p.hours - 0.3 * (i + 1)) }).execute();
+    }
+  }
+
+  const conversations: [Who, Who, number, string, boolean?][] = [
+    ["ingrid", "nils", 6, "Can you help set up the timing gates for the relay on Saturday?"],
+    ["nils", "ingrid", 5.8, "Sure, I'll be there at eight."],
+    ["ingrid", "nils", 1.5, "Perfect. Coffee's on me.", false],
+  ];
+  for (const [from, to, hours, content, read = true] of conversations) {
+    await db.insertInto("messages").values({
+      id: newId(), sender_id: ids[from], recipient_id: ids[to], content, read: read ? 1 : 0, created_at: ago(hours),
+    }).execute();
+  }
+
+  const logo = await picture(SCENES.winter, ids.ingrid, [256, 256]);
+  await db.updateTable("site_settings").set({
+    site_name: "Fjellvik Ski Club",
+    tagline: "Groomed trails, night skiing and waffles in the warming hut.",
+    logo_url: logo,
+    contact_email: "club@example.com",
+    theme: JSON.stringify({ preset: "fjord", mode: "light", font: "sans", radius: "default" }),
+    updated_at: ago(24),
+  }).where("id", "=", 1).execute();
+
+  console.log(`[demo] Seeded the ski club in ${config.databaseUrl}`);
+}
+
 const existing = await db.selectFrom("users").select("id").limit(1).executeTakeFirst();
 if (existing) {
   console.log(`[demo] ${config.databaseUrl} already has accounts; leaving it alone.`);
+} else if (process.env.DEMO_SITE === "club") {
+  await seedClub();
 } else {
   await seedDemo();
 }

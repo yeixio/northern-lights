@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Message, Profile } from "../lib/types";
 import { useSiteEvents } from "./live";
-import { call, withSiteAuthor, type Site } from "./sites";
+import { call, updateSite, withSiteAuthor, type Site } from "./sites";
 
 /** A conversation with one person on one site. Accounts are per site, so the same person on two sites is two conversations. */
 export interface Conversation {
@@ -68,6 +68,8 @@ export function useInbox(sites: Site[]) {
 }
 
 export interface Summary {
+  /** The signed-in person, from sites that send it. */
+  user?: Profile;
   unread_messages: number;
   new_posts: number;
   new_comments_on_my_posts: number;
@@ -82,6 +84,8 @@ export function useSummaries(sites: Site[]) {
     try {
       const s = await call<Summary>(site, "GET", `/api/app/summary?since=${encodeURIComponent(site.seenAt)}`);
       setSummaries((all) => ({ ...all, [site.url]: s }));
+      // Keeps the name and photo current: a photo link stops working after a day or two.
+      if (s.user && JSON.stringify(s.user) !== JSON.stringify(site.user)) updateSite(site.url, { user: s.user });
     } catch {
       // A site that can't be reached shows no badge.
     }
@@ -102,6 +106,6 @@ export function useSummaries(sites: Site[]) {
 
   useSiteEvents(sites, (site) => void reload(site));
 
-  const total = (k: keyof Summary) => sites.reduce((n, s) => n + (summaries[s.url]?.[k] ?? 0), 0);
+  const total = (k: Exclude<keyof Summary, "user">) => sites.reduce((n, s) => n + (summaries[s.url]?.[k] ?? 0), 0);
   return { summaries, unreadMessages: total("unread_messages") };
 }

@@ -14,3 +14,4 @@ demo-data
 
 # rclone.conf for docker-compose.cloud.yml holds cloud account tokens
 /rclone/
+__pycache__

@@ -114,6 +114,24 @@ jobs:
           export ASC_API_KEY="$RUNNER_TEMP/AuthKey.p8"
           export UPLOAD_APPSTORE=1
           ./mobile/scripts/package-ios.sh
+      # The build is up either way; a listing problem shows here and can be
+      # fixed with the App Store listing workflow.
+      - name: Push the App Store listing and screenshots
+        continue-on-error: true
+        env:
+          VERSION: ${{ inputs.version || github.ref_name }}
+          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          ASC_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
+          APP_REVIEW_SITE: ${{ secrets.APP_REVIEW_SITE }}
+          APP_REVIEW_EMAIL: ${{ secrets.APP_REVIEW_EMAIL }}
+          APP_REVIEW_PASSWORD: ${{ secrets.APP_REVIEW_PASSWORD }}
+        run: |
+          set -euo pipefail
+          export APPSTORE_VERSION="${VERSION#app-}"
+          export APPSTORE_VERSION="${APPSTORE_VERSION#v}"
+          export ASC_API_KEY="$RUNNER_TEMP/AuthKey.p8"
+          python3 mobile/scripts/push-appstore-metadata.py
+          python3 mobile/scripts/push-screenshots.py
       - name: Remove the iOS signing keychain
         if: always()
         run: |

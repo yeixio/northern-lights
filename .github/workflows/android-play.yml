@@ -86,7 +86,7 @@ jobs:
             echo "::notice title=Not uploaded::PLAY_SERVICE_ACCOUNT_JSON isn't set, so the signed bundle is attached to this run for uploading by hand."
           fi
           ./mobile/scripts/package-android.sh
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         # Also after a failed Play upload: the first bundle for a new app has to be uploaded by hand.
         if: always() && hashFiles('dist/NorthernLights.aab') != ''
         continue-on-error: true

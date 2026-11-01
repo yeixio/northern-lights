@@ -30,7 +30,7 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - id: arch
         run: echo "name=${PLATFORM#linux/}" >> "$GITHUB_OUTPUT"

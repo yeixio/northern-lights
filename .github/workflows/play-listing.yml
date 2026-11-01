@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Check the listing
         run: python3 mobile/scripts/push-play-listing.py --check
       - name: Push the listing to Play

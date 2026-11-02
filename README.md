@@ -376,6 +376,12 @@ Contributions are welcome, from typo fixes to new features. Start with
 and please follow the [code of conduct](CODE_OF_CONDUCT.md). Found a security
 problem? Report it privately as described in [SECURITY.md](SECURITY.md).
 
+## Support Northern Lights
+
+Northern Lights is free and open source. If it's useful to you, you can [donate to Northern Lights](https://yeix.io/donate/northern-lights), once or monthly, by card. Donations pay for its development. Nothing is held back for donors.
+
+[![Donate to Northern Lights](https://img.shields.io/badge/Donate-Support_Northern_Lights-ff6a55?style=for-the-badge&logo=stripe&logoColor=white)](https://yeix.io/donate/northern-lights)
+
 ## License
 
 [MIT](LICENSE)
